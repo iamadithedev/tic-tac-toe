@@ -1,0 +1,6 @@
+[submodule "Code/Engine"]
+	path = Code/Engine
+	url = https://github.com/iamadithedev/engine.git
+[submodule "Libraries/Engine"]
+	path = Libraries/Engine
+	url = https://github.com/iamadithedev/engine-libraries.git
