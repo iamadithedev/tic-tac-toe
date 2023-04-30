@@ -70,6 +70,9 @@ int main()
     auto x_geometry = MeshImporter::load("../x.obj");
     auto o_geometry = MeshImporter::load("../o.obj");
 
+    auto frame_geometry = MeshImporter::load("../frame.obj");
+    auto cover_geometry = MeshImporter::load("../cover.obj");
+
     // ==================================================================================
 
     std::vector<vertex_attribute> diffuse_vertex_attributes =
@@ -80,44 +83,79 @@ int main()
 
     // ==================================================================================
 
-    VertexArray x_vertex_array;
-    x_vertex_array.create();
-    x_vertex_array.bind();
+    VertexArray x_vao;
+    x_vao.create();
+    x_vao.bind();
 
-    Buffer x_vertex_buffer {GL_ARRAY_BUFFER, GL_STATIC_DRAW };
-    x_vertex_buffer.create();
-    x_vertex_buffer.data(BufferData::make_data(x_geometry.vertices()));
+    Buffer x_vbo {GL_ARRAY_BUFFER, GL_STATIC_DRAW };
+    x_vbo.create();
+    x_vbo.data(BufferData::make_data(x_geometry.vertices()));
 
-    Buffer x_indices_buffer {GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
-    x_indices_buffer.create();
-    x_indices_buffer.data(BufferData::make_data(x_geometry.indices()));
+    Buffer x_ibo {GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
+    x_ibo.create();
+    x_ibo.data(BufferData::make_data(x_geometry.indices()));
 
-    x_vertex_array.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
+    x_vao.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
 
     // ==================================================================================
 
-    VertexArray o_vertex_array;
-    o_vertex_array.create();
-    o_vertex_array.bind();
+    VertexArray o_vao;
+    o_vao.create();
+    o_vao.bind();
 
-    Buffer o_vertex_buffer { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
-    o_vertex_buffer.create();
-    o_vertex_buffer.data(BufferData::make_data(o_geometry.vertices()));
+    Buffer o_vbo {GL_ARRAY_BUFFER, GL_STATIC_DRAW };
+    o_vbo.create();
+    o_vbo.data(BufferData::make_data(o_geometry.vertices()));
 
-    Buffer o_indices_buffer { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
-    o_indices_buffer.create();
-    o_indices_buffer.data(BufferData::make_data(o_geometry.indices()));
+    Buffer o_ibo {GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
+    o_ibo.create();
+    o_ibo.data(BufferData::make_data(o_geometry.indices()));
 
-    o_vertex_array.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
+    o_vao.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
+
+    // ==================================================================================
+
+    VertexArray frame_vao;
+    frame_vao.create();
+    frame_vao.bind();
+
+    Buffer frame_vbo { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
+    frame_vbo.create();
+    frame_vbo.data(BufferData::make_data(frame_geometry.vertices()));
+
+    Buffer frame_ibo { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
+    frame_ibo.create();
+    frame_ibo.data(BufferData::make_data(frame_geometry.indices()));
+
+    frame_vao.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
+
+    // ==================================================================================
+
+    VertexArray cover_vao;
+    cover_vao.create();
+    cover_vao.bind();
+
+    Buffer cover_vbo { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
+    cover_vbo.create();
+    cover_vbo.data(BufferData::make_data(cover_geometry.vertices()));
+
+    Buffer cover_ibo { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
+    cover_ibo.create();
+    cover_ibo.data(BufferData::make_data(cover_geometry.indices()));
+
+    cover_vao.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
 
     // ==================================================================================
 
     Material x_material { { 1.0f, 1.0f, 0.0f } };
-    Material o_material { { 0.0f, 1.0f, 0.0f }};
+    Material o_material { { 0.0f, 1.0f, 0.0f } };
+
+    Material frame_material { { 0.0f, 0.0f, 1.0f } };
+    Material cover_material { { 0.0f, 0.0f, 1.0f } };
 
     // ==================================================================================
 
-    Light directional_light { { 0.0f, 0.0f, 5.0f }, { 1.0f, 1.0f, 1.0f } };
+    Light directional_light { { 0.0f, 0.0f, 8.0f }, { 1.0f, 1.0f, 1.0f } };
 
     // ==================================================================================
 
@@ -149,12 +187,15 @@ int main()
     Camera perspective_camera;
 
     Transform perspective_camera_transform;
-    perspective_camera_transform.translate({0.0f, 0.0f, -8.0f });
+    perspective_camera_transform.translate({0.0f, 0.0f, -10.0f });
 
     // ==================================================================================
 
     Transform x_transform;
     Transform o_transform;
+
+    Transform frame_transform;
+    Transform cover_transform;
 
     // ==================================================================================
 
@@ -182,34 +223,60 @@ int main()
 
         // ==================================================================================
 
-        x_transform.translate({ 0.0f, 0.0f, 0.0f })
-                   .scale({ 0.5f, 0.5f, 0.5f });
+        cover_transform.translate({ 0.0f, 0.0f, 0.0f })
+                       .scale({ 0.5f, 0.5f, 0.5f });
 
-        matrices[0] = x_transform.matrix();
+        matrices[0] = cover_transform.matrix();
         matrices[1] = perspective_camera_transform.matrix();
         matrices[2] = perspective_camera.projection();
 
         matrices_buffer.data(BufferData::make_data(matrices));
-        material_buffer.data(BufferData::make_data(&x_material));
+        material_buffer.data(BufferData::make_data(&cover_material));
         light_buffer.data(BufferData::make_data(&directional_light));
 
         diffuse_program.bind();
 
-        x_vertex_array.bind();
+        cover_vao.bind();
+        glDrawElements(GL_TRIANGLES, (int32_t)cover_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+
+        // ==================================================================================
+
+        x_transform.translate({ 0.0f, 0.0f, 0.0f })
+                   .scale({ 0.5f, 0.5f, 0.5f });
+
+        matrices[0] = x_transform.matrix();
+
+        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
+        material_buffer.sub_data(BufferData::make_data(&x_material));
+
+        x_vao.bind();
         glDrawElements(GL_TRIANGLES, (int32_t)x_geometry.indices().size(), GL_UNSIGNED_INT, 0);
 
         // ==================================================================================
 
-        o_transform.translate({ 2.5f, 0.0f, 0.0f })
+        o_transform.translate({ 3.0f, 0.0f, 0.0f })
                    .scale({ 0.5f, 0.5f, 0.5f });
 
         matrices[0] = o_transform.matrix();
 
-        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]), 0);
-        material_buffer.data(BufferData::make_data(&o_material));
+        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
+        material_buffer.sub_data(BufferData::make_data(&o_material));
 
-        o_vertex_array.bind();
+        o_vao.bind();
         glDrawElements(GL_TRIANGLES, (int32_t)o_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+
+        // ==================================================================================
+
+        frame_transform.translate({ 0.0f, 0.0f, 0.0f })
+                       .scale({ 0.5f, 0.5f, 0.5f });
+
+        matrices[0] = frame_transform.matrix();
+
+        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
+        material_buffer.sub_data(BufferData::make_data(&frame_material));
+
+        frame_vao.bind();
+        glDrawElements(GL_TRIANGLES, (int32_t)frame_geometry.indices().size(), GL_UNSIGNED_INT, 0);
 
         // ==================================================================================
 
