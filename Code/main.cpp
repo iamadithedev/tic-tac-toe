@@ -68,6 +68,7 @@ int main()
     // ==================================================================================
 
     auto x_geometry = MeshImporter::load("../x.obj");
+    auto o_geometry = MeshImporter::load("../o.obj");
 
     // ==================================================================================
 
@@ -95,7 +96,24 @@ int main()
 
     // ==================================================================================
 
+    VertexArray o_vertex_array;
+    o_vertex_array.create();
+    o_vertex_array.bind();
+
+    Buffer o_vertex_buffer { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
+    o_vertex_buffer.create();
+    o_vertex_buffer.data(BufferData::make_data(o_geometry.vertices()));
+
+    Buffer o_indices_buffer { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
+    o_indices_buffer.create();
+    o_indices_buffer.data(BufferData::make_data(o_geometry.indices()));
+
+    o_vertex_array.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
+
+    // ==================================================================================
+
     Material x_material { { 1.0f, 1.0f, 0.0f } };
+    Material o_material { { 0.0f, 1.0f, 0.0f }};
 
     // ==================================================================================
 
@@ -131,11 +149,12 @@ int main()
     Camera perspective_camera;
 
     Transform perspective_camera_transform;
-    perspective_camera_transform.translate({0.0f, 0.0f, -5.0f });
+    perspective_camera_transform.translate({0.0f, 0.0f, -8.0f });
 
     // ==================================================================================
 
     Transform x_transform;
+    Transform o_transform;
 
     // ==================================================================================
 
@@ -164,8 +183,7 @@ int main()
         // ==================================================================================
 
         x_transform.translate({ 0.0f, 0.0f, 0.0f })
-                .rotate({ 0.0f, 1.0f, 0.0f }, total_time)
-                .scale({ 0.5f, 0.5f, 0.5f });
+                   .scale({ 0.5f, 0.5f, 0.5f });
 
         matrices[0] = x_transform.matrix();
         matrices[1] = perspective_camera_transform.matrix();
@@ -179,6 +197,19 @@ int main()
 
         x_vertex_array.bind();
         glDrawElements(GL_TRIANGLES, (int32_t)x_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+
+        // ==================================================================================
+
+        o_transform.translate({ 2.5f, 0.0f, 0.0f })
+                   .scale({ 0.5f, 0.5f, 0.5f });
+
+        matrices[0] = o_transform.matrix();
+
+        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]), 0);
+        material_buffer.data(BufferData::make_data(&o_material));
+
+        o_vertex_array.bind();
+        glDrawElements(GL_TRIANGLES, (int32_t)o_geometry.indices().size(), GL_UNSIGNED_INT, 0);
 
         // ==================================================================================
 
