@@ -13,12 +13,22 @@
 #include "light.hpp"
 #include "time.hpp"
 
+#include "editor.hpp"
+#include "camera_window.hpp"
+#include "physics.hpp"
+#include "physics_debug.hpp"
+
+#include "board.hpp"
+
 int main()
 {
     glfw::PlatformFactory platform_factory;
 
+    int32_t width  = 1024;
+    int32_t height = 768;
+
     auto platform = platform_factory.create_platform();
-    auto window   = platform_factory.create_window(1024, 768);
+    auto window   = platform_factory.create_window(width, height);
 
     if (!platform->init())
     {
@@ -40,6 +50,30 @@ int main()
     }
 
     platform->vsync();
+
+    // ==================================================================================
+
+    auto debug_vertex_source   = File::read("../debug_vert.glsl");
+    auto debug_fragment_source = File::read("../debug_frag.glsl");
+
+    Shader debug_vertex_shader {"debug_vert.glsl", GL_VERTEX_SHADER };
+    debug_vertex_shader.create();
+    debug_vertex_shader.source(debug_vertex_source.data());
+    debug_vertex_shader.compile();
+
+    Shader debug_fragment_shader {"debug_frag.glsl", GL_FRAGMENT_SHADER };
+    debug_fragment_shader.create();
+    debug_fragment_shader.source(debug_fragment_source.data());
+    debug_fragment_shader.compile();
+
+    Program debug_program;
+    debug_program.create();
+    debug_program.attach(&debug_vertex_shader);
+    debug_program.attach(&debug_fragment_shader);
+    debug_program.link();
+
+    debug_program.detach(&debug_vertex_shader);
+    debug_program.detach(&debug_fragment_shader);
 
     // ==================================================================================
 
@@ -72,6 +106,28 @@ int main()
 
     auto frame_geometry = MeshImporter::load("../frame.obj");
     auto cover_geometry = MeshImporter::load("../cover.obj");
+
+    // ==================================================================================
+
+    std::vector<vertex_attribute> debug_vertex_attributes =
+    {
+        { 0, 3, (int32_t)offsetof(vertex::debug, position) },
+        { 1, 3, (int32_t)offsetof(vertex::debug, color) }
+    };
+
+    VertexArray debug_vertex_array;
+    debug_vertex_array.create();
+    debug_vertex_array.bind();
+
+    Buffer debug_vertex_buffer { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
+    debug_vertex_buffer.create();
+    debug_vertex_buffer.bind();
+
+    Buffer debug_indices_buffer { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
+    debug_indices_buffer.create();
+    debug_indices_buffer.bind();
+
+    debug_vertex_array.init_attributes_of_type<vertex::debug>(debug_vertex_attributes);
 
     // ==================================================================================
 
@@ -147,11 +203,10 @@ int main()
 
     // ==================================================================================
 
-    Material x_material { { 1.0f, 1.0f, 0.0f } };
-    Material o_material { { 0.0f, 1.0f, 0.0f } };
+    Material x_material  {{1.0f, 1.0f, 0.0f } };
+    Material o_material  {{0.0f, 1.0f, 1.0f } };
 
     Material frame_material { { 0.0f, 0.0f, 1.0f } };
-    Material cover_material { { 0.0f, 0.0f, 1.0f } };
 
     // ==================================================================================
 
@@ -184,18 +239,54 @@ int main()
 
     // ==================================================================================
 
-    Camera perspective_camera;
+    Camera perspective_camera { 60.0f, (float) width / (float) height };
+
+    vec3 camera_position { 0.0f, 0.0f, -12.0f };
 
     Transform perspective_camera_transform;
-    perspective_camera_transform.translate({0.0f, 0.0f, -10.0f });
+    perspective_camera_transform.translate(camera_position);
 
     // ==================================================================================
 
-    Transform x_transform;
-    Transform o_transform;
+    Transform item_transform;
 
     Transform frame_transform;
     Transform cover_transform;
+
+    // ==================================================================================
+
+    Physics    physics;
+    PhysicsDebug debug;
+
+    physics.init();
+    physics.add_debug(&debug);
+
+    // ==================================================================================
+
+    Editor editor;
+    editor.init(window.get());
+
+    CameraWindow camera_window;
+    camera_window.set_camera(&perspective_camera);
+    camera_window.set_transform(&perspective_camera_transform, camera_position);
+
+    editor.add_window(&camera_window);
+
+    // ==================================================================================
+
+    Board board;
+    board.init(3.0f);
+
+    auto    shape = new btBoxShape({ 1.4f, 1.4f, 0.5f });
+    int32_t index = 0;
+
+    for (int32_t row = 0; row < board.rows(); row++)
+    {
+        for (int32_t column = 0; column < board.columns(); column++)
+        {
+            physics.add_collision(index++, shape, board.item_at(row, column).position);
+        }
+    }
 
     // ==================================================================================
 
@@ -204,16 +295,59 @@ int main()
 
     rgb clear_color { 0.45f, 0.55f, 0.60f };
 
+    bool x_turn = true;
+
     while (!window->closed())
     {
+        physics.debug();
+
         const float total_time = time.total_time();
 
-        int32_t width  = window->width();
-        int32_t height = window->height();
+        width  = window->width();
+        height = window->height();
 
-        const float ratio = (float) width / (float) height;
+        perspective_camera.resize((float)width, (float)height);
 
-        perspective_camera.perspective(fov, ratio);
+        // ==================================================================================
+
+        if (glfwGetMouseButton(((glfw::Window*)window.get())->handle(), GLFW_MOUSE_BUTTON_1))
+        {
+            double xpos, ypos;
+            glfwGetCursorPos(((glfw::Window*)window.get())->handle(), &xpos, &ypos);
+
+            const float y = height - ypos;
+
+            glm::vec4 viewport { 0.0f, 0.0f, width, height };
+
+            glm::vec3 start = glm::unProject({ xpos, y, 0.0f }, perspective_camera_transform.matrix(), perspective_camera.projection(), viewport);
+            glm::vec3 end   = glm::unProject({ xpos, y, 1.0f }, perspective_camera_transform.matrix(), perspective_camera.projection(), viewport);
+
+            glm::vec3 direction = glm::normalize(end - start);
+
+            auto hit = physics.cast({ {start.x, start.y, start.z },
+                                      { direction.x, direction.y, direction.z } }, 50.0f);
+
+            if (hit.hasHit())
+            {
+                const int32_t hit_index = hit.m_collisionObject->getUserIndex();
+
+                const int32_t row    = hit_index / board.columns();
+                const int32_t column = hit_index % board.columns();
+
+                auto& item = board.item_at(row, column);
+
+                if (item.type == Item::Type::None)
+                {
+                    item.type =  x_turn ? Item::Type::X : Item::Type::O;
+                       x_turn = !x_turn;
+                }
+            }
+        }
+
+        // ==================================================================================
+
+        editor.begin(width, height, total_time);
+        editor.end();
 
         // ==================================================================================
 
@@ -231,39 +365,44 @@ int main()
         matrices[2] = perspective_camera.projection();
 
         matrices_buffer.data(BufferData::make_data(matrices));
-        material_buffer.data(BufferData::make_data(&cover_material));
+        material_buffer.data(BufferData::make_data(&frame_material));
         light_buffer.data(BufferData::make_data(&directional_light));
 
         diffuse_program.bind();
 
-        cover_vao.bind();
-        glDrawElements(GL_TRIANGLES, (int32_t)cover_geometry.indices().size(), GL_UNSIGNED_INT, 0);
-
         // ==================================================================================
 
-        x_transform.translate({ 0.0f, 0.0f, 0.0f })
-                   .scale({ 0.5f, 0.5f, 0.5f });
+        for (int32_t row = 0; row < board.rows(); row++)
+        {
+            for (int32_t column = 0; column < board.columns(); column++)
+            {
+                const auto& item = board.item_at(row, column);
 
-        matrices[0] = x_transform.matrix();
+                item_transform.translate(item.position)
+                              .scale({ 0.5f, 0.5f, 0.5f });
 
-        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
-        material_buffer.sub_data(BufferData::make_data(&x_material));
+                matrices[0] = item_transform.matrix();
 
-        x_vao.bind();
-        glDrawElements(GL_TRIANGLES, (int32_t)x_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+                matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
+                material_buffer.sub_data(BufferData::make_data(&frame_material));
 
-        // ==================================================================================
+                cover_vao.bind();
+                glDrawElements(GL_TRIANGLES, (int32_t)cover_geometry.indices().size(), GL_UNSIGNED_INT, 0);
 
-        o_transform.translate({ 3.0f, 0.0f, 0.0f })
-                   .scale({ 0.5f, 0.5f, 0.5f });
-
-        matrices[0] = o_transform.matrix();
-
-        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
-        material_buffer.sub_data(BufferData::make_data(&o_material));
-
-        o_vao.bind();
-        glDrawElements(GL_TRIANGLES, (int32_t)o_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+                if (item.type == Item::Type::X)
+                {
+                    material_buffer.sub_data(BufferData::make_data(&x_material));
+                    x_vao.bind();
+                    glDrawElements(GL_TRIANGLES, (int32_t)x_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+                }
+                else if (item.type == Item::Type::O)
+                {
+                    material_buffer.sub_data(BufferData::make_data(&o_material));
+                    o_vao.bind();
+                    glDrawElements(GL_TRIANGLES, (int32_t)o_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+                }
+            }
+        }
 
         // ==================================================================================
 
@@ -279,6 +418,28 @@ int main()
         glDrawElements(GL_TRIANGLES, (int32_t)frame_geometry.indices().size(), GL_UNSIGNED_INT, 0);
 
         // ==================================================================================
+
+        //#define DEBUG
+        #ifdef  DEBUG
+
+        matrices[0] = glm::mat4(1.0f);
+        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
+
+        const auto& geometry = debug.geometry();
+
+        debug_program.bind();
+
+        debug_vertex_array.bind();
+        debug_vertex_buffer.data(BufferData::make_data(geometry.vertices()));
+        debug_indices_buffer.data(BufferData::make_data(geometry.indices()));
+
+        glDrawElements(GL_LINES, (int32_t)geometry.indices().size(), GL_UNSIGNED_INT, 0);
+
+        #endif
+
+        // ==================================================================================
+
+        editor.draw();
 
         window->update();
         platform->update();
