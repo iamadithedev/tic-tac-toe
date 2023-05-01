@@ -28,14 +28,14 @@ int main()
     int32_t height = 768;
 
     auto platform = platform_factory.create_platform();
-    auto window   = platform_factory.create_window(width, height);
+    auto window   = platform_factory.create_window("Tic-Tac-Toe", { width, height });
 
     if (!platform->init())
     {
         return -1;
     }
 
-    if (!window->create("Tic-Tac-Toe"))
+    if (!window->create())
     {
         platform->release();
         return -1;
@@ -59,12 +59,10 @@ int main()
     Shader debug_vertex_shader {"debug_vert.glsl", GL_VERTEX_SHADER };
     debug_vertex_shader.create();
     debug_vertex_shader.source(debug_vertex_source.data());
-    debug_vertex_shader.compile();
 
     Shader debug_fragment_shader {"debug_frag.glsl", GL_FRAGMENT_SHADER };
     debug_fragment_shader.create();
     debug_fragment_shader.source(debug_fragment_source.data());
-    debug_fragment_shader.compile();
 
     Program debug_program;
     debug_program.create();
@@ -83,12 +81,10 @@ int main()
     Shader diffuse_vertex_shader {"diffuse_vert.glsl", GL_VERTEX_SHADER };
     diffuse_vertex_shader.create();
     diffuse_vertex_shader.source(diffuse_vertex_source.data());
-    diffuse_vertex_shader.compile();
 
     Shader diffuse_fragment_shader {"diffuse_frag.glsl", GL_FRAGMENT_SHADER };
     diffuse_fragment_shader.create();
     diffuse_fragment_shader.source(diffuse_fragment_source.data());
-    diffuse_fragment_shader.compile();
 
     Program diffuse_program;
     diffuse_program.create();
@@ -303,8 +299,8 @@ int main()
 
         const float total_time = time.total_time();
 
-        width  = window->width();
-        height = window->height();
+        width  = window->size().width;
+        height = window->size().height;
 
         perspective_camera.resize((float)width, (float)height);
 
