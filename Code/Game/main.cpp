@@ -105,10 +105,10 @@ int main()
 
     // ==================================================================================
 
-    std::vector<vertex_attribute> debug_vertex_attributes =
+    vertex_attributes debug_vertex_attributes =
     {
-        { 0, 3, (int32_t)offsetof(vertex::debug, position) },
-        { 1, 3, (int32_t)offsetof(vertex::debug, color) }
+        { 0, 3, (int32_t)offsetof(mesh_vertex::debug, position) },
+        { 1, 3, (int32_t)offsetof(mesh_vertex::debug, color) }
     };
 
     VertexArray debug_vertex_array;
@@ -123,14 +123,14 @@ int main()
     debug_indices_buffer.create();
     debug_indices_buffer.bind();
 
-    debug_vertex_array.init_attributes_of_type<vertex::debug>(debug_vertex_attributes);
+    debug_vertex_array.init_attributes_of_type<mesh_vertex::debug>(debug_vertex_attributes);
 
     // ==================================================================================
 
-    std::vector<vertex_attribute> diffuse_vertex_attributes =
+    vertex_attributes diffuse_vertex_attributes =
     {
-        { 0, 3, (int32_t)offsetof(vertex::diffuse, position) },
-        { 1, 3, (int32_t)offsetof(vertex::diffuse, normal) }
+        { 0, 3, (int32_t)offsetof(mesh_vertex::diffuse, position) },
+        { 1, 3, (int32_t)offsetof(mesh_vertex::diffuse, normal) }
     };
 
     // ==================================================================================
@@ -145,9 +145,9 @@ int main()
 
     Buffer x_ibo {GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
     x_ibo.create();
-    x_ibo.data(BufferData::make_data(x_geometry.indices()));
+    x_ibo.data(BufferData::make_data(x_geometry.faces()));
 
-    x_vao.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
+    x_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
 
     // ==================================================================================
 
@@ -161,9 +161,9 @@ int main()
 
     Buffer o_ibo {GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
     o_ibo.create();
-    o_ibo.data(BufferData::make_data(o_geometry.indices()));
+    o_ibo.data(BufferData::make_data(o_geometry.faces()));
 
-    o_vao.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
+    o_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
 
     // ==================================================================================
 
@@ -177,9 +177,9 @@ int main()
 
     Buffer frame_ibo { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
     frame_ibo.create();
-    frame_ibo.data(BufferData::make_data(frame_geometry.indices()));
+    frame_ibo.data(BufferData::make_data(frame_geometry.faces()));
 
-    frame_vao.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
+    frame_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
 
     // ==================================================================================
 
@@ -193,9 +193,9 @@ int main()
 
     Buffer cover_ibo { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
     cover_ibo.create();
-    cover_ibo.data(BufferData::make_data(cover_geometry.indices()));
+    cover_ibo.data(BufferData::make_data(cover_geometry.faces()));
 
-    cover_vao.init_attributes_of_type<vertex::diffuse>(diffuse_vertex_attributes);
+    cover_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
 
     // ==================================================================================
 
@@ -394,19 +394,19 @@ int main()
                 material_buffer.sub_data(BufferData::make_data(&frame_material));
 
                 cover_vao.bind();
-                glDrawElements(GL_TRIANGLES, (int32_t)cover_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+                glDrawElements(GL_TRIANGLES, (int32_t)cover_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0);
 
                 if (item.type == Item::Type::X)
                 {
                     material_buffer.sub_data(BufferData::make_data(&x_material));
                     x_vao.bind();
-                    glDrawElements(GL_TRIANGLES, (int32_t)x_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+                    glDrawElements(GL_TRIANGLES, (int32_t)x_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0);
                 }
                 else if (item.type == Item::Type::O)
                 {
                     material_buffer.sub_data(BufferData::make_data(&o_material));
                     o_vao.bind();
-                    glDrawElements(GL_TRIANGLES, (int32_t)o_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+                    glDrawElements(GL_TRIANGLES, (int32_t)o_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0);
                 }
             }
         }
@@ -422,7 +422,7 @@ int main()
         material_buffer.sub_data(BufferData::make_data(&frame_material));
 
         frame_vao.bind();
-        glDrawElements(GL_TRIANGLES, (int32_t)frame_geometry.indices().size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, (int32_t)frame_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0);
 
         // ==================================================================================
 
@@ -440,7 +440,7 @@ int main()
         debug_vertex_buffer.data(BufferData::make_data(geometry.vertices()));
         debug_indices_buffer.data(BufferData::make_data(geometry.indices()));
 
-        glDrawElements(GL_LINES, (int32_t)geometry.indices().size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_LINES, (int32_t)geometry.faces().size() * 2, GL_UNSIGNED_INT, 0);
 
         #endif
 
