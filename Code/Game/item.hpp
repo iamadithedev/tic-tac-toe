@@ -11,6 +11,8 @@ struct Item
 
     Item();
 
+    [[nodiscard]] bool none() const;
+
     vec3 position;
     Type type;
 };

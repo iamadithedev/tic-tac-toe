@@ -291,7 +291,8 @@ int main()
 
     rgb clear_color { 0.45f, 0.55f, 0.60f };
 
-    bool x_turn = true;
+    bool x_turn  = true;
+    bool is_over = false;
 
     while (!window->closed())
     {
@@ -306,7 +307,7 @@ int main()
 
         // ==================================================================================
 
-        if (glfwGetMouseButton(((glfw::Window*)window.get())->handle(), GLFW_MOUSE_BUTTON_1))
+        if (!is_over && glfwGetMouseButton(((glfw::Window*)window.get())->handle(), GLFW_MOUSE_BUTTON_1))
         {
             double xpos, ypos;
             glfwGetCursorPos(((glfw::Window*)window.get())->handle(), &xpos, &ypos);
@@ -332,12 +333,22 @@ int main()
 
                 auto& item = board.item_at(row, column);
 
-                if (item.type == Item::Type::None)
+                if (item.none())
                 {
                     item.type =  x_turn ? Item::Type::X : Item::Type::O;
                        x_turn = !x_turn;
+
+                    is_over = board.check_win(row, column, item.type);
                 }
             }
+        }
+
+        if (glfwGetKey(((glfw::Window*)window.get())->handle(), GLFW_KEY_SPACE) == GLFW_PRESS)
+        {
+            x_turn  = true;
+            is_over = false;
+
+            board.reset();
         }
 
         // ==================================================================================
