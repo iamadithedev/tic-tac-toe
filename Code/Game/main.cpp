@@ -235,12 +235,12 @@ int main()
 
     // ==================================================================================
 
-    Camera perspective_camera { 60.0f, (float) width / (float) height };
+    Camera perspective_camera { 60.0f };
 
     vec3 camera_position { 0.0f, 0.0f, -12.0f };
 
-    Transform perspective_camera_transform;
-    perspective_camera_transform.translate(camera_position);
+    Transform camera_transform;
+    camera_transform.translate(camera_position);
 
     // ==================================================================================
 
@@ -264,7 +264,7 @@ int main()
 
     CameraWindow camera_window;
     camera_window.set_camera(&perspective_camera);
-    camera_window.set_transform(&perspective_camera_transform, camera_position);
+    camera_window.set_transform(&camera_transform, camera_position);
 
     editor.add_window(&camera_window);
 
@@ -312,17 +312,8 @@ int main()
             double xpos, ypos;
             glfwGetCursorPos(((glfw::Window*)window.get())->handle(), &xpos, &ypos);
 
-            const float y = height - ypos;
-
-            glm::vec4 viewport { 0.0f, 0.0f, width, height };
-
-            glm::vec3 start = glm::unProject({ xpos, y, 0.0f }, perspective_camera_transform.matrix(), perspective_camera.projection(), viewport);
-            glm::vec3 end   = glm::unProject({ xpos, y, 1.0f }, perspective_camera_transform.matrix(), perspective_camera.projection(), viewport);
-
-            glm::vec3 direction = glm::normalize(end - start);
-
-            auto hit = physics.cast({ {start.x, start.y, start.z },
-                                      { direction.x, direction.y, direction.z } }, 50.0f);
+            auto ray = perspective_camera.screen_to_world(camera_transform.matrix(), {(float)xpos, (float)ypos });
+            auto hit = physics.cast(ray, 50.0f);
 
             if (hit.hasHit())
             {
@@ -368,7 +359,7 @@ int main()
                        .scale({ 0.5f, 0.5f, 0.5f });
 
         matrices[0] = cover_transform.matrix();
-        matrices[1] = perspective_camera_transform.matrix();
+        matrices[1] = camera_transform.matrix();
         matrices[2] = perspective_camera.projection();
 
         matrices_buffer.data(BufferData::make_data(matrices));

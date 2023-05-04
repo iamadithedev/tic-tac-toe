@@ -9,3 +9,8 @@ bool Item::none() const
 {
     return type == Type::None;
 }
+
+void Item::reset()
+{
+    type = Type::None;
+}

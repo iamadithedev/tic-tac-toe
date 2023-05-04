@@ -74,7 +74,7 @@ void Board::reset()
     {
         for (int32_t column = 0; column < columns(); column++)
         {
-            item_at(row, column).type = Item::Type::None;
+            item_at(row, column).reset();
         }
     }
 

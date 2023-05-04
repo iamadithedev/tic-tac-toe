@@ -11,6 +11,8 @@ struct Item
 
     Item();
 
+    void reset();
+
     [[nodiscard]] bool none() const;
 
     vec3 position;
