@@ -15,8 +15,8 @@
 
 #include "editor.hpp"
 #include "camera_window.hpp"
-#include "physics.hpp"
 #include "physics_debug.hpp"
+#include "physics.hpp"
 
 #include "board.hpp"
 
@@ -428,8 +428,9 @@ int main()
         debug_program.bind();
 
         debug_vertex_array.bind();
+
         debug_vertex_buffer.data(BufferData::make_data(geometry.vertices()));
-        debug_indices_buffer.data(BufferData::make_data(geometry.indices()));
+        debug_indices_buffer.data(BufferData::make_data(geometry.faces()));
 
         glDrawElements(GL_LINES, (int32_t)geometry.faces().size() * 2, GL_UNSIGNED_INT, 0);
 
