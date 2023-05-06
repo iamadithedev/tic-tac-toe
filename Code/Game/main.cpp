@@ -29,6 +29,7 @@ int main()
 
     auto platform = platform_factory.create_platform();
     auto window   = platform_factory.create_window("Tic-Tac-Toe", { width, height });
+    auto input    = platform_factory.create_input();
 
     if (!platform->init())
     {
@@ -260,7 +261,7 @@ int main()
 
         // ==================================================================================
 
-        if (!is_over && glfwGetMouseButton(((glfw::Window*)window.get())->handle(), GLFW_MOUSE_BUTTON_1))
+        if (!is_over && input->mouse_pressed(window.get(), GLFW_MOUSE_BUTTON_1))
         {
             double xpos, ypos;
             glfwGetCursorPos(((glfw::Window*)window.get())->handle(), &xpos, &ypos);
@@ -287,12 +288,17 @@ int main()
             }
         }
 
-        if (glfwGetKey(((glfw::Window*)window.get())->handle(), GLFW_KEY_SPACE) == GLFW_PRESS)
+        if (input->key_pressed(window.get(), GLFW_KEY_SPACE))
         {
             x_turn  = true;
             is_over = false;
 
             board.reset();
+        }
+
+        if (input->key_pressed(window.get(), GLFW_KEY_ESCAPE))
+        {
+            window->close();
         }
 
         // ==================================================================================
