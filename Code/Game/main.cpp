@@ -14,9 +14,9 @@
 #include "time.hpp"
 
 #include "editor.hpp"
-#include "camera_window.hpp"
-#include "physics_debug.hpp"
 #include "physics.hpp"
+
+#include "Components/camera_window.hpp"
 
 #include "board.hpp"
 
@@ -53,28 +53,6 @@ int main()
 
     // ==================================================================================
 
-    auto debug_vertex_source   = File::read("../debug_vert.glsl");
-    auto debug_fragment_source = File::read("../debug_frag.glsl");
-
-    Shader debug_vertex_shader {"debug_vert.glsl", GL_VERTEX_SHADER };
-    debug_vertex_shader.create();
-    debug_vertex_shader.source(debug_vertex_source.data());
-
-    Shader debug_fragment_shader {"debug_frag.glsl", GL_FRAGMENT_SHADER };
-    debug_fragment_shader.create();
-    debug_fragment_shader.source(debug_fragment_source.data());
-
-    Program debug_program;
-    debug_program.create();
-    debug_program.attach(&debug_vertex_shader);
-    debug_program.attach(&debug_fragment_shader);
-    debug_program.link();
-
-    debug_program.detach(&debug_vertex_shader);
-    debug_program.detach(&debug_fragment_shader);
-
-    // ==================================================================================
-
     auto diffuse_vertex_source = File::read("../diffuse_vert.glsl");
     auto diffuse_fragment_source = File::read("../diffuse_frag.glsl");
 
@@ -102,28 +80,6 @@ int main()
 
     auto frame_geometry = MeshImporter::load("../frame.obj");
     auto cover_geometry = MeshImporter::load("../cover.obj");
-
-    // ==================================================================================
-
-    vertex_attributes debug_vertex_attributes =
-    {
-        { 0, 3, (int32_t)offsetof(mesh_vertex::debug, position) },
-        { 1, 3, (int32_t)offsetof(mesh_vertex::debug, color) }
-    };
-
-    VertexArray debug_vertex_array;
-    debug_vertex_array.create();
-    debug_vertex_array.bind();
-
-    Buffer debug_vertex_buffer { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
-    debug_vertex_buffer.create();
-    debug_vertex_buffer.bind();
-
-    Buffer debug_indices_buffer { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
-    debug_indices_buffer.create();
-    debug_indices_buffer.bind();
-
-    debug_vertex_array.init_attributes_of_type<mesh_vertex::debug>(debug_vertex_attributes);
 
     // ==================================================================================
 
@@ -251,16 +207,13 @@ int main()
 
     // ==================================================================================
 
-    Physics    physics;
-    PhysicsDebug debug;
-
+    Physics physics;
     physics.init();
-    physics.add_debug(&debug);
 
     // ==================================================================================
 
     Editor editor;
-    editor.init(window.get());
+    editor.init(window.get(), &physics);
 
     CameraWindow camera_window;
     camera_window.set_camera(&perspective_camera);
@@ -296,7 +249,7 @@ int main()
 
     while (!window->closed())
     {
-        physics.debug();
+        physics.compute_debug_geometry();
 
         const float total_time = time.total_time();
 
@@ -417,28 +370,7 @@ int main()
 
         // ==================================================================================
 
-        //#define DEBUG
-        #ifdef  DEBUG
-
-        matrices[0] = glm::mat4(1.0f);
-        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
-
-        const auto& geometry = debug.geometry();
-
-        debug_program.bind();
-
-        debug_vertex_array.bind();
-
-        debug_vertex_buffer.data(BufferData::make_data(geometry.vertices()));
-        debug_indices_buffer.data(BufferData::make_data(geometry.faces()));
-
-        glDrawElements(GL_LINES, (int32_t)geometry.faces().size() * 2, GL_UNSIGNED_INT, 0);
-
-        #endif
-
-        // ==================================================================================
-
-        editor.draw();
+        editor.draw(&matrices_buffer);
 
         window->update();
         platform->update();
