@@ -1,5 +1,5 @@
-#include "GLFW/platform_factory.hpp"
-#include "GLFW/window.hpp"
+#include "glfw/platform_factory.hpp"
+#include "glfw/window.hpp"
 
 #include "file.hpp"
 #include "program.hpp"
@@ -16,7 +16,7 @@
 #include "editor.hpp"
 #include "physics.hpp"
 
-#include "Components/camera_window.hpp"
+#include "components/camera_window.hpp"
 
 #include "board.hpp"
 
@@ -288,7 +288,7 @@ int main()
             }
         }
 
-        if (input->key_pressed(window.get(), GLFW_KEY_SPACE))
+        if (input->key_pressed(window.get(), input::Key::Space))
         {
             x_turn  = true;
             is_over = false;
@@ -296,7 +296,7 @@ int main()
             board.reset();
         }
 
-        if (input->key_pressed(window.get(), GLFW_KEY_ESCAPE))
+        if (input->key_pressed(window.get(), input::Key::Escape))
         {
             window->close();
         }
