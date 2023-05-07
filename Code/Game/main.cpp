@@ -1,5 +1,5 @@
 #include "glfw/platform_factory.hpp"
-#include "glfw/window.hpp"
+#include "glfw/platform.hpp"
 
 #include "file.hpp"
 #include "program.hpp"
@@ -42,7 +42,7 @@ int main()
         return -1;
     }
 
-    if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress))
+    if (!glfw::Platform::init_context())
     {
         window->destroy();
         platform->release();
