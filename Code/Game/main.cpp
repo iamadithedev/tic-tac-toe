@@ -55,11 +55,17 @@ int main()
     // ==================================================================================
 
     auto diffuse_vertex_source = File::read("../diffuse_vert.glsl");
+    auto diffuse_vertex_instance_source = File::read("../diffuse_vert_instance.glsl");
+
     auto diffuse_fragment_source = File::read("../diffuse_frag.glsl");
 
     Shader diffuse_vertex_shader {"diffuse_vert.glsl", GL_VERTEX_SHADER };
     diffuse_vertex_shader.create();
     diffuse_vertex_shader.source(diffuse_vertex_source.data());
+
+    Shader diffuse_vertex_instance_shader { "diffuse_vert_instance.glsl", GL_VERTEX_SHADER };
+    diffuse_vertex_instance_shader.create();
+    diffuse_vertex_instance_shader.source(diffuse_vertex_instance_source.data());
 
     Shader diffuse_fragment_shader {"diffuse_frag.glsl", GL_FRAGMENT_SHADER };
     diffuse_fragment_shader.create();
@@ -71,8 +77,17 @@ int main()
     diffuse_program.attach(&diffuse_fragment_shader);
     diffuse_program.link();
 
+    Program diffuse_instance_program;
+    diffuse_instance_program.create();
+    diffuse_instance_program.attach(&diffuse_vertex_instance_shader);
+    diffuse_instance_program.attach(&diffuse_fragment_shader);
+    diffuse_instance_program.link();
+
     diffuse_program.detach(&diffuse_vertex_shader);
     diffuse_program.detach(&diffuse_fragment_shader);
+
+    diffuse_instance_program.detach(&diffuse_vertex_instance_shader);
+    diffuse_instance_program.detach(&diffuse_fragment_shader);
 
     // ==================================================================================
 
@@ -171,6 +186,10 @@ int main()
     matrices_buffer.create();
     matrices_buffer.bind_at_location(0);
 
+    Buffer matrices_instance_buffer { GL_UNIFORM_BUFFER, GL_STATIC_DRAW };
+    matrices_instance_buffer.create();
+    matrices_instance_buffer.bind_at_location(3);
+
     Buffer material_buffer { GL_UNIFORM_BUFFER, GL_STATIC_DRAW };
     material_buffer.create();
     material_buffer.bind_at_location(1);
@@ -188,7 +207,8 @@ int main()
 
     // ==================================================================================
 
-    std::vector<glm::mat4> matrices { 3 };
+    std::vector<glm::mat4> matrices          { 3 };
+    std::vector<glm::mat4> matrices_instance { 9 };
 
     // ==================================================================================
 
@@ -202,9 +222,7 @@ int main()
     // ==================================================================================
 
     Transform item_transform;
-
     Transform frame_transform;
-    Transform cover_transform;
 
     // ==================================================================================
 
@@ -234,14 +252,23 @@ int main()
     {
         for (int32_t column = 0; column < board.columns(); column++)
         {
-            physics.add_collision(index++, shape, board.item_at(row, column).position);
+            const auto& item = board.item_at(row, column);
+
+            item_transform.translate(item.position).scale({ 0.5f, 0.5f, 0.5f });
+
+            matrices_instance[index] = item_transform.matrix();
+
+            physics.add_collision(index, shape, item.position);
+
+            index++;
         }
     }
+
+    matrices_instance_buffer.data(BufferData::make_data(matrices_instance));
 
     // ==================================================================================
 
     const Time time;
-    float fov = 60.0f;
 
     rgb clear_color { 0.45f, 0.55f, 0.60f };
 
@@ -313,10 +340,6 @@ int main()
 
         // ==================================================================================
 
-        cover_transform.translate({ 0.0f, 0.0f, 0.0f })
-                       .scale({ 0.5f, 0.5f, 0.5f });
-
-        matrices[0] = cover_transform.matrix();
         matrices[1] = camera_transform.matrix();
         matrices[2] = perspective_camera.projection();
 
@@ -324,9 +347,18 @@ int main()
         material_buffer.data(BufferData::make_data(&frame_material));
         light_buffer.data(BufferData::make_data(&directional_light));
 
+        // ==================================================================================
+
+        diffuse_instance_program.bind();
+
+        material_buffer.sub_data(BufferData::make_data(&frame_material));
+
+        cover_vao.bind();
+        glDrawElementsInstanced(GL_TRIANGLES, (int32_t)cover_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0, 9);
+
         diffuse_program.bind();
 
-        // ==================================================================================
+        index = 0;
 
         for (int32_t row = 0; row < board.rows(); row++)
         {
@@ -334,16 +366,8 @@ int main()
             {
                 const auto& item = board.item_at(row, column);
 
-                item_transform.translate(item.position)
-                              .scale({ 0.5f, 0.5f, 0.5f });
-
-                matrices[0] = item_transform.matrix();
-
+                matrices[0] = matrices_instance[index++];
                 matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
-                material_buffer.sub_data(BufferData::make_data(&frame_material));
-
-                cover_vao.bind();
-                glDrawElements(GL_TRIANGLES, (int32_t)cover_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0);
 
                 if (item.type == Item::Type::X)
                 {
