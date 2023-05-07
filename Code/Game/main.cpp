@@ -263,10 +263,9 @@ int main()
 
         if (!is_over && input->mouse_pressed(window.get(), input::Button::Left))
         {
-            double xpos, ypos;
-            glfwGetCursorPos(((glfw::Window*)window.get())->handle(), &xpos, &ypos);
+            vec2 mouse_position = input->mouse_position(window.get());
 
-            auto ray = perspective_camera.screen_to_world(camera_transform.matrix(), {(float)xpos, (float)ypos });
+            auto ray = perspective_camera.screen_to_world(camera_transform.matrix(), mouse_position);
             auto hit = physics.cast(ray, 50.0f);
 
             if (hit.hasHit())
