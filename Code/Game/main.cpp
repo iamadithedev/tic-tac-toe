@@ -213,8 +213,7 @@ int main()
     // ==================================================================================
 
     Camera perspective_camera { 60.0f };
-
-    vec3 camera_position { 0.0f, 0.0f, -12.0f };
+    vec3   camera_position { 0.0f, 0.0f, -12.0f };
 
     Transform camera_transform;
     camera_transform.translate(camera_position);
