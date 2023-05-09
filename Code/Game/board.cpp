@@ -11,7 +11,6 @@ void Board::init(float offset)
         for (int32_t column = 0; column < columns(); column++)
         {
             item_at(row, column).position = { x, y, 0.0f };
-
             x += offset;
         }
 
