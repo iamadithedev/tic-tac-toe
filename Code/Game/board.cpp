@@ -1,8 +1,9 @@
 #include "board.hpp"
 
-void Board::init(float offset)
+void Board::init()
 {
-    float y = offset;
+    float offset = 2.85f;
+    float y      = offset;
 
     for (int32_t row = 0; row < rows(); row++)
     {

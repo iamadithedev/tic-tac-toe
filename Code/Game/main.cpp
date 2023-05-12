@@ -178,7 +178,7 @@ int main()
 
     // ==================================================================================
 
-    Light directional_light { { 0.0f, 0.0f, 8.0f }, { 1.0f, 1.0f, 1.0f } };
+    Light directional_light { { 0.0f, 10.0f, 10.0f }, { 1.0f, 1.0f, 1.0f } };
 
     // ==================================================================================
 
@@ -242,25 +242,33 @@ int main()
     // ==================================================================================
 
     Board board;
-    board.init(3.0f);
+    board.init();
 
-    auto    shape = new btBoxShape({ 1.4f, 1.4f, 0.5f });
+    auto    shape = new btBoxShape({ 1.3f, 1.3f, 0.2f });
+
     int32_t index = 0;
+    float offset  = 3.0f;
+    float y       = offset;
 
     for (int32_t row = 0; row < board.rows(); row++)
     {
+        float x = -offset;
+
         for (int32_t column = 0; column < board.columns(); column++)
         {
             const auto& item = board.item_at(row, column);
 
-            item_transform.translate(item.position).scale({ 0.5f, 0.5f, 0.5f });
-
+            item_transform.translate({ x, y, 0.0f })
+                          .scale({ 0.5f, 0.5f, 0.5f });
             matrices_instance[index] = item_transform.matrix();
 
             physics.add_collision(index, shape, item.position);
 
-            index++;
+            index += 1;
+                x += offset;
         }
+
+        y -= offset;
     }
 
     matrices_instance_buffer.data(BufferData::make_data(matrices_instance));
@@ -365,7 +373,10 @@ int main()
             {
                 const auto& item = board.item_at(row, column);
 
-                matrices[0] = matrices_instance[index++];
+                item_transform.translate(item.position)
+                               .scale({ 0.5f, 0.5f, 0.5f });
+
+                matrices[0] = item_transform.matrix();
                 matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
 
                 if (item.type == Item::Type::X)

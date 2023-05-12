@@ -6,7 +6,7 @@
 class Board final : public Grid<Item, 3, 3>
 {
 public:
-    void init(float offset);
+    void init();
     void reset();
 
     bool check_win(int32_t row, int32_t column, Item::Type type);
