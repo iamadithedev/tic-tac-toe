@@ -281,6 +281,14 @@ int main()
 
     // ==================================================================================
 
+    auto cover_mesh_part = cover_geometry.get_mesh_part();
+    auto frame_mesh_part = frame_geometry.get_mesh_part();
+
+    auto x_mesh_part = x_geometry.get_mesh_part();
+    auto o_mesh_part = o_geometry.get_mesh_part();
+
+    // ==================================================================================
+
     const Time time;
 
     rgb clear_color { 0.45f, 0.55f, 0.60f };
@@ -367,7 +375,7 @@ int main()
         material_buffer.sub_data(BufferData::make_data(&frame_material));
 
         cover_vao.bind();
-        glDrawElementsInstanced(GL_TRIANGLES, (int32_t)cover_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0, 9);
+        glDrawElementsInstanced(GL_TRIANGLES, cover_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(cover_mesh_part.index), 9);
 
         diffuse_program.bind();
 
@@ -389,13 +397,13 @@ int main()
                 {
                     material_buffer.sub_data(BufferData::make_data(&x_material));
                     x_vao.bind();
-                    glDrawElements(GL_TRIANGLES, (int32_t)x_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0);
+                    glDrawElements(GL_TRIANGLES, x_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(x_mesh_part.index));
                 }
                 else if (item.type == Item::Type::O)
                 {
                     material_buffer.sub_data(BufferData::make_data(&o_material));
                     o_vao.bind();
-                    glDrawElements(GL_TRIANGLES, (int32_t)o_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0);
+                    glDrawElements(GL_TRIANGLES, o_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(o_mesh_part.index));
                 }
             }
         }
@@ -411,7 +419,7 @@ int main()
         material_buffer.sub_data(BufferData::make_data(&frame_material));
 
         frame_vao.bind();
-        glDrawElements(GL_TRIANGLES, (int32_t)frame_geometry.faces().size() * 3, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, frame_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(frame_mesh_part.index));
 
         // ==================================================================================
 
