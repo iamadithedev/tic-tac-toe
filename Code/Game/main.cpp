@@ -91,11 +91,17 @@ int main()
 
     // ==================================================================================
 
-    auto x_geometry = MeshImporter::load("../x.obj");
-    auto o_geometry = MeshImporter::load("../o.obj");
+    auto x_geometry_list = MeshImporter::load("../x.obj");
+    auto x_geometry = x_geometry_list[0];
 
-    auto frame_geometry = MeshImporter::load("../frame.obj");
-    auto cover_geometry = MeshImporter::load("../cover.obj");
+    auto o_geometry_list = MeshImporter::load("../o.obj");
+    auto o_geometry = o_geometry_list[0];
+
+    auto frame_geometry_list = MeshImporter::load("../frame.obj");
+    auto frame_geometry = frame_geometry_list[0];
+
+    auto cover_geometry_list = MeshImporter::load("../cover.obj");
+    auto cover_geometry = cover_geometry_list[0];
 
     // ==================================================================================
 
