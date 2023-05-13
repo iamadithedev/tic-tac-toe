@@ -12,6 +12,7 @@
 #include "camera.hpp"
 #include "light.hpp"
 #include "time.hpp"
+#include "combine_geometry.hpp"
 
 #include "editor.hpp"
 #include "physics.hpp"
@@ -91,17 +92,16 @@ int main()
 
     // ==================================================================================
 
-    auto x_geometry_list = MeshImporter::load("../x.obj");
-    auto x_geometry = x_geometry_list[0];
+    auto tic_tac_toe_geometries = MeshImporter::load("../tic_tac_toe.obj");
 
-    auto o_geometry_list = MeshImporter::load("../o.obj");
-    auto o_geometry = o_geometry_list[0];
+    CombineGeometry scene_geometry;
+    scene_geometry.combine(tic_tac_toe_geometries);
 
-    auto frame_geometry_list = MeshImporter::load("../frame.obj");
-    auto frame_geometry = frame_geometry_list[0];
+    auto x_mesh_part = scene_geometry.submeshes()[0];
+    auto o_mesh_part = scene_geometry.submeshes()[1];
 
-    auto cover_geometry_list = MeshImporter::load("../cover.obj");
-    auto cover_geometry = cover_geometry_list[0];
+    auto frame_mesh_part = scene_geometry.submeshes()[2];
+    auto cover_mesh_part = scene_geometry.submeshes()[3];
 
     // ==================================================================================
 
@@ -113,67 +113,19 @@ int main()
 
     // ==================================================================================
 
-    VertexArray x_vao;
-    x_vao.create();
-    x_vao.bind();
+    VertexArray scene_vao;
+    scene_vao.create();
+    scene_vao.bind();
 
-    Buffer x_vbo {GL_ARRAY_BUFFER, GL_STATIC_DRAW };
-    x_vbo.create();
-    x_vbo.data(BufferData::make_data(x_geometry.vertices()));
+    Buffer scene_vbo { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
+    scene_vbo.create();
+    scene_vbo.data(BufferData::make_data(scene_geometry.vertices()));
 
-    Buffer x_ibo {GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
-    x_ibo.create();
-    x_ibo.data(BufferData::make_data(x_geometry.faces()));
+    Buffer scene_ibo { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
+    scene_ibo.create();
+    scene_ibo.data(BufferData::make_data(scene_geometry.faces()));
 
-    x_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
-
-    // ==================================================================================
-
-    VertexArray o_vao;
-    o_vao.create();
-    o_vao.bind();
-
-    Buffer o_vbo {GL_ARRAY_BUFFER, GL_STATIC_DRAW };
-    o_vbo.create();
-    o_vbo.data(BufferData::make_data(o_geometry.vertices()));
-
-    Buffer o_ibo {GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
-    o_ibo.create();
-    o_ibo.data(BufferData::make_data(o_geometry.faces()));
-
-    o_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
-
-    // ==================================================================================
-
-    VertexArray frame_vao;
-    frame_vao.create();
-    frame_vao.bind();
-
-    Buffer frame_vbo { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
-    frame_vbo.create();
-    frame_vbo.data(BufferData::make_data(frame_geometry.vertices()));
-
-    Buffer frame_ibo { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
-    frame_ibo.create();
-    frame_ibo.data(BufferData::make_data(frame_geometry.faces()));
-
-    frame_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
-
-    // ==================================================================================
-
-    VertexArray cover_vao;
-    cover_vao.create();
-    cover_vao.bind();
-
-    Buffer cover_vbo { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
-    cover_vbo.create();
-    cover_vbo.data(BufferData::make_data(cover_geometry.vertices()));
-
-    Buffer cover_ibo { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
-    cover_ibo.create();
-    cover_ibo.data(BufferData::make_data(cover_geometry.faces()));
-
-    cover_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
+    scene_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
 
     // ==================================================================================
 
@@ -281,14 +233,6 @@ int main()
 
     // ==================================================================================
 
-    auto cover_mesh_part = cover_geometry.get_mesh_part();
-    auto frame_mesh_part = frame_geometry.get_mesh_part();
-
-    auto x_mesh_part = x_geometry.get_mesh_part();
-    auto o_mesh_part = o_geometry.get_mesh_part();
-
-    // ==================================================================================
-
     const Time time;
 
     rgb clear_color { 0.45f, 0.55f, 0.60f };
@@ -374,12 +318,10 @@ int main()
 
         material_buffer.sub_data(BufferData::make_data(&frame_material));
 
-        cover_vao.bind();
+        scene_vao.bind();
         glDrawElementsInstanced(GL_TRIANGLES, cover_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(cover_mesh_part.index), 9);
 
         diffuse_program.bind();
-
-        index = 0;
 
         for (int32_t row = 0; row < board.rows(); row++)
         {
@@ -396,13 +338,11 @@ int main()
                 if (item.type == Item::Type::X)
                 {
                     material_buffer.sub_data(BufferData::make_data(&x_material));
-                    x_vao.bind();
                     glDrawElements(GL_TRIANGLES, x_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(x_mesh_part.index));
                 }
                 else if (item.type == Item::Type::O)
                 {
                     material_buffer.sub_data(BufferData::make_data(&o_material));
-                    o_vao.bind();
                     glDrawElements(GL_TRIANGLES, o_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(o_mesh_part.index));
                 }
             }
@@ -418,7 +358,6 @@ int main()
         matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
         material_buffer.sub_data(BufferData::make_data(&frame_material));
 
-        frame_vao.bind();
         glDrawElements(GL_TRIANGLES, frame_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(frame_mesh_part.index));
 
         // ==================================================================================
