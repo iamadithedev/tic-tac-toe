@@ -111,8 +111,6 @@ int main()
         { 1, 3, (int32_t)offsetof(mesh_vertex::diffuse, normal) }
     };
 
-    // ==================================================================================
-
     VertexArray scene_vao;
     scene_vao.create();
     scene_vao.bind();
