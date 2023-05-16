@@ -55,10 +55,10 @@ int main()
 
     // ==================================================================================
 
-    auto diffuse_vertex_source = File::read("../diffuse_vert.glsl");
-    auto diffuse_vertex_instance_source = File::read("../diffuse_vert_instance.glsl");
+    auto diffuse_vertex_source = File::read<char>("../glsl/diffuse.vert.glsl");
+    auto diffuse_vertex_instance_source = File::read<char>("../glsl/diffuse_instance.vert.glsl");
 
-    auto diffuse_fragment_source = File::read("../diffuse_frag.glsl");
+    auto diffuse_fragment_source = File::read<char>("../glsl/diffuse.frag.glsl");
 
     Shader diffuse_vertex_shader {"diffuse_vert.glsl", GL_VERTEX_SHADER };
     diffuse_vertex_shader.create();
@@ -107,8 +107,8 @@ int main()
 
     vertex_attributes diffuse_vertex_attributes =
     {
-        { 0, 3, (int32_t)offsetof(mesh_vertex::diffuse, position) },
-        { 1, 3, (int32_t)offsetof(mesh_vertex::diffuse, normal) }
+        { 0, 3, GL_FLOAT, (int32_t)offsetof(mesh_vertex::diffuse, position) },
+        { 1, 3, GL_FLOAT, (int32_t)offsetof(mesh_vertex::diffuse, normal) }
     };
 
     VertexArray scene_vao;
@@ -160,6 +160,9 @@ int main()
 
     render_pass.enable(GL_DEPTH_TEST);
     render_pass.enable(GL_MULTISAMPLE);
+
+    rgb clear_color { 0.45f, 0.55f, 0.60f };
+    render_pass.clear_color(clear_color);
 
     // ==================================================================================
 
@@ -233,8 +236,6 @@ int main()
 
     const Time time;
 
-    rgb clear_color { 0.45f, 0.55f, 0.60f };
-
     bool x_turn  = true;
     bool is_over = false;
 
@@ -297,8 +298,7 @@ int main()
 
         // ==================================================================================
 
-        render_pass.viewport(0, 0, width, height);
-        render_pass.clear_color(clear_color.r, clear_color.g, clear_color.b);
+        render_pass.viewport({ 0, 0 }, { width, height });
         render_pass.clear_buffers();
 
         // ==================================================================================
