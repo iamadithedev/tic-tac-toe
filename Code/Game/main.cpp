@@ -13,14 +13,16 @@
 #include "light.hpp"
 #include "time.hpp"
 #include "combine_geometry.hpp"
-
-#include "editor.hpp"
 #include "physics_world.hpp"
+#include "board.hpp"
 
+//#define USE_EDITOR
+
+#ifdef USE_EDITOR
+#include "editor.hpp"
 #include "components/camera_window.hpp"
 #include "render_pass_window.hpp"
-
-#include "board.hpp"
+#endif
 
 int main()
 {
@@ -164,7 +166,7 @@ int main()
     render_pass.enable(GL_DEPTH_TEST);
     render_pass.enable(GL_MULTISAMPLE);
 
-    rgb clear_color { 0.220f, 0.353f, 0.632f };
+    rgb clear_color { 0.062, 0.403, 0.436 };
     render_pass.clear_color(clear_color);
 
     // ==================================================================================
@@ -194,6 +196,8 @@ int main()
 
     // ==================================================================================
 
+    #ifdef USE_EDITOR
+
     Editor editor;
     editor.init(window.get(), &physics);
 
@@ -206,6 +210,8 @@ int main()
 
     editor.add_window(&camera_window);
     editor.add_window(&render_pass_window);
+
+    #endif
 
     // ==================================================================================
 
@@ -250,7 +256,11 @@ int main()
 
     while (!window->closed())
     {
+        #ifdef USE_EDITOR
+
         physics.compute_debug_geometry();
+
+        #endif
 
         const float total_time = time.total_time();
 
@@ -310,8 +320,12 @@ int main()
 
         // ==================================================================================
 
+        #ifdef USE_EDITOR
+
         editor.begin(width, height, total_time);
         editor.end();
+
+        #endif
 
         // ==================================================================================
 
@@ -375,7 +389,11 @@ int main()
 
         // ==================================================================================
 
+        #ifdef USE_EDITOR
+
         editor.draw(&matrices_buffer);
+
+        #endif
 
         window->update();
         platform->update();
