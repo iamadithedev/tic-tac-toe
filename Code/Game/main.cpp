@@ -2,9 +2,9 @@
 #include "glfw/platform.hpp"
 
 #include "file.hpp"
-#include "program.hpp"
+#include "shader.hpp"
 #include "vertex_array.hpp"
-#include "mesh_importer.hpp"
+#include "importers/mesh_importer.hpp"
 #include "buffer.hpp"
 #include "material.hpp"
 #include "render_pass.hpp"
@@ -15,7 +15,7 @@
 #include "combine_geometry.hpp"
 
 #include "editor.hpp"
-#include "physics.hpp"
+#include "physics_world.hpp"
 
 #include "components/camera_window.hpp"
 
@@ -55,30 +55,30 @@ int main()
 
     // ==================================================================================
 
-    auto diffuse_vertex_source = File::read<char>("../glsl/diffuse.vert.glsl");
-    auto diffuse_vertex_instance_source = File::read<char>("../glsl/diffuse_instance.vert.glsl");
+    auto diffuse_vertex_source = File::read<char>("../Assets/glsl/diffuse.vert.glsl");
+    auto diffuse_vertex_instance_source = File::read<char>("../Assets/glsl/diffuse_instance.vert.glsl");
 
-    auto diffuse_fragment_source = File::read<char>("../glsl/diffuse.frag.glsl");
+    auto diffuse_fragment_source = File::read<char>("../Assets/glsl/diffuse.frag.glsl");
 
-    Shader diffuse_vertex_shader {"diffuse_vert.glsl", GL_VERTEX_SHADER };
+    ShaderStage diffuse_vertex_shader { "diffuse_vert.glsl", GL_VERTEX_SHADER };
     diffuse_vertex_shader.create();
-    diffuse_vertex_shader.source(diffuse_vertex_source.data());
+    diffuse_vertex_shader.source(diffuse_vertex_source);
 
-    Shader diffuse_vertex_instance_shader { "diffuse_vert_instance.glsl", GL_VERTEX_SHADER };
+    ShaderStage diffuse_vertex_instance_shader { "diffuse_vert_instance.glsl", GL_VERTEX_SHADER };
     diffuse_vertex_instance_shader.create();
-    diffuse_vertex_instance_shader.source(diffuse_vertex_instance_source.data());
+    diffuse_vertex_instance_shader.source(diffuse_vertex_instance_source);
 
-    Shader diffuse_fragment_shader {"diffuse_frag.glsl", GL_FRAGMENT_SHADER };
+    ShaderStage diffuse_fragment_shader {"diffuse_frag.glsl", GL_FRAGMENT_SHADER };
     diffuse_fragment_shader.create();
-    diffuse_fragment_shader.source(diffuse_fragment_source.data());
+    diffuse_fragment_shader.source(diffuse_fragment_source);
 
-    Program diffuse_program;
+    Shader diffuse_program;
     diffuse_program.create();
     diffuse_program.attach(&diffuse_vertex_shader);
     diffuse_program.attach(&diffuse_fragment_shader);
     diffuse_program.link();
 
-    Program diffuse_instance_program;
+    Shader diffuse_instance_program;
     diffuse_instance_program.create();
     diffuse_instance_program.attach(&diffuse_vertex_instance_shader);
     diffuse_instance_program.attach(&diffuse_fragment_shader);
@@ -92,16 +92,16 @@ int main()
 
     // ==================================================================================
 
-    auto tic_tac_toe_geometries = MeshImporter::load("../tic_tac_toe.obj");
+    auto tic_tac_toe_geometries = MeshImporter::load("../Assets/tic_tac_toe.obj");
 
     CombineGeometry scene_geometry;
     scene_geometry.combine(tic_tac_toe_geometries);
 
-    auto x_mesh_part = scene_geometry.submeshes()[0];
-    auto o_mesh_part = scene_geometry.submeshes()[1];
+    auto x_mesh_part = scene_geometry[0];
+    auto o_mesh_part = scene_geometry[1];
 
-    auto frame_mesh_part = scene_geometry.submeshes()[2];
-    auto cover_mesh_part = scene_geometry.submeshes()[3];
+    auto frame_mesh_part = scene_geometry[2];
+    auto cover_mesh_part = scene_geometry[3];
 
     // ==================================================================================
 
@@ -117,10 +117,12 @@ int main()
 
     Buffer scene_vbo { GL_ARRAY_BUFFER, GL_STATIC_DRAW };
     scene_vbo.create();
+    scene_vbo.bind();
     scene_vbo.data(BufferData::make_data(scene_geometry.vertices()));
 
     Buffer scene_ibo { GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
     scene_ibo.create();
+    scene_ibo.bind();
     scene_ibo.data(BufferData::make_data(scene_geometry.faces()));
 
     scene_vao.init_attributes_of_type<mesh_vertex::diffuse>(diffuse_vertex_attributes);
@@ -138,19 +140,19 @@ int main()
 
     // ==================================================================================
 
-    Buffer matrices_buffer { GL_UNIFORM_BUFFER, GL_STATIC_DRAW };
+    Buffer matrices_buffer { GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW };
     matrices_buffer.create();
     matrices_buffer.bind_at_location(0);
 
-    Buffer matrices_instance_buffer { GL_UNIFORM_BUFFER, GL_STATIC_DRAW };
+    Buffer matrices_instance_buffer { GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW };
     matrices_instance_buffer.create();
     matrices_instance_buffer.bind_at_location(3);
 
-    Buffer material_buffer { GL_UNIFORM_BUFFER, GL_STATIC_DRAW };
+    Buffer material_buffer { GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW };
     material_buffer.create();
     material_buffer.bind_at_location(1);
 
-    Buffer light_buffer { GL_UNIFORM_BUFFER, GL_STATIC_DRAW };
+    Buffer light_buffer { GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW };
     light_buffer.create();
     light_buffer.bind_at_location(2);
 
@@ -174,6 +176,8 @@ int main()
     Camera perspective_camera { 60.0f };
     vec3   camera_position { 0.0f, 0.0f, -12.0f };
 
+    perspective_camera.resize((float) width, (float) height);
+
     Transform camera_transform;
     camera_transform.translate(camera_position);
 
@@ -184,7 +188,7 @@ int main()
 
     // ==================================================================================
 
-    Physics physics;
+    PhysicsWorld physics;
     physics.init();
 
     // ==================================================================================
@@ -245,10 +249,18 @@ int main()
 
         const float total_time = time.total_time();
 
-        width  = window->size().width;
-        height = window->size().height;
+        // ==================================================================================
 
-        perspective_camera.resize((float)width, (float)height);
+        const int32_t new_width  = window->size().width;
+        const int32_t new_height = window->size().height;
+
+        if (width != new_width || height != new_height)
+        {
+            width = new_width;
+            height = new_height;
+
+            perspective_camera.resize((float) width, (float) height);
+        }
 
         // ==================================================================================
 
