@@ -18,6 +18,7 @@
 #include "physics_world.hpp"
 
 #include "components/camera_window.hpp"
+#include "render_pass_window.hpp"
 
 #include "board.hpp"
 
@@ -158,12 +159,12 @@ int main()
 
     // ==================================================================================
 
-    const RenderPass render_pass { GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT };
+    RenderPass render_pass { GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT };
 
     render_pass.enable(GL_DEPTH_TEST);
     render_pass.enable(GL_MULTISAMPLE);
 
-    rgb clear_color { 0.45f, 0.55f, 0.60f };
+    rgb clear_color { 0.220f, 0.353f, 0.632f };
     render_pass.clear_color(clear_color);
 
     // ==================================================================================
@@ -200,7 +201,11 @@ int main()
     camera_window.set_camera(&perspective_camera);
     camera_window.set_transform(&camera_transform, camera_position);
 
+    RenderPassWindow render_pass_window;
+    render_pass_window.set_render_pass(&render_pass, clear_color);
+
     editor.add_window(&camera_window);
+    editor.add_window(&render_pass_window);
 
     // ==================================================================================
 
@@ -256,7 +261,7 @@ int main()
 
         if (width != new_width || height != new_height)
         {
-            width = new_width;
+            width  = new_width;
             height = new_height;
 
             perspective_camera.resize((float) width, (float) height);
