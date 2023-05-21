@@ -315,6 +315,7 @@ int main()
 
         // ==================================================================================
 
+        matrices[0] = glm::mat4 { 1.0f };
         matrices[1] = camera_transform.matrix();
         matrices[2] = perspective_camera.projection();
 
@@ -342,8 +343,7 @@ int main()
                 item_transform.translate(item.position)
                                .scale({ 0.5f, 0.5f, 0.5f });
 
-                matrices[0] = item_transform.matrix();
-                matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
+                matrices_buffer.sub_data(BufferData::make_data(&item_transform.matrix()));
 
                 if (item.type == Item::Type::X)
                 {
@@ -363,9 +363,7 @@ int main()
         frame_transform.translate({ 0.0f, 0.0f, 0.0f })
                        .scale({ 0.5f, 0.5f, 0.5f });
 
-        matrices[0] = frame_transform.matrix();
-
-        matrices_buffer.sub_data(BufferData::make_data(&matrices[0]));
+        matrices_buffer.sub_data(BufferData::make_data(&frame_transform.matrix()));
         material_buffer.sub_data(BufferData::make_data(&frame_material));
 
         glDrawElements(GL_TRIANGLES, frame_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(frame_mesh_part.index));
