@@ -11,11 +11,11 @@
 #include "camera.hpp"
 #include "light.hpp"
 #include "time.hpp"
-#include "combine_geometry.hpp"
 #include "physics_world.hpp"
 #include "board.hpp"
 #include "importers/mesh_importer.hpp"
 #include "importers/texture_importer.hpp"
+#include "geometries/combine_geometry.hpp"
 #include "resource_manager.hpp"
 #include "sampler.hpp"
 
