@@ -4,7 +4,6 @@
 #include "file.hpp"
 #include "shader.hpp"
 #include "vertex_array.hpp"
-#include "importers/mesh_importer.hpp"
 #include "buffer.hpp"
 #include "material.hpp"
 #include "render_pass.hpp"
@@ -15,8 +14,13 @@
 #include "combine_geometry.hpp"
 #include "physics_world.hpp"
 #include "board.hpp"
+#include "importers/mesh_importer.hpp"
+#include "importers/texture_importer.hpp"
+#include "resource_manager.hpp"
+#include "sampler.hpp"
 
 //#define USE_EDITOR
+#define USE_BLEND
 
 #ifdef USE_EDITOR
 #include "editor.hpp"
@@ -58,6 +62,13 @@ int main()
 
     // ==================================================================================
 
+    ResourceManager resources;
+    resources.init("../Assets/");
+
+    auto sprite_shader = resources.load<Shader>("sprite_shader.asset");
+
+    // ==================================================================================
+
     auto diffuse_vertex_source = File::read<char>("../Assets/glsl/diffuse.vert.glsl");
     auto diffuse_vertex_instance_source = File::read<char>("../Assets/glsl/diffuse_instance.vert.glsl");
 
@@ -92,6 +103,23 @@ int main()
 
     diffuse_instance_program.detach(&diffuse_vertex_instance_shader);
     diffuse_instance_program.detach(&diffuse_fragment_shader);
+
+    // ==================================================================================
+
+    auto tic_tac_toe_texture_data = TextureImporter::load("../Assets/tic-tac-toe.PNG");
+
+    Texture tic_tac_toe_texture { GL_TEXTURE_2D };
+    tic_tac_toe_texture.create();
+    tic_tac_toe_texture.source(tic_tac_toe_texture_data);
+    tic_tac_toe_texture_data.release();
+
+    Sampler default_sampler;
+    default_sampler.create();
+
+    default_sampler.parameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    default_sampler.parameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    default_sampler.bind_at_location(0);
 
     // ==================================================================================
 
@@ -143,9 +171,9 @@ int main()
 
     // ==================================================================================
 
-    Buffer matrices_buffer { GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW };
-    matrices_buffer.create();
-    matrices_buffer.bind_at_location(0);
+    Buffer matrices_ubo { GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW };
+    matrices_ubo.create();
+    matrices_ubo.bind_at_location(0);
 
     Buffer matrices_instance_buffer { GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW };
     matrices_instance_buffer.create();
@@ -161,10 +189,57 @@ int main()
 
     // ==================================================================================
 
+    float sprite_half_w = ((float)tic_tac_toe_texture_data.width()  * 0.6f)  / 2.0f;
+    float sprite_half_h = ((float)tic_tac_toe_texture_data.height() * 0.47f) / 2.0f;
+
+    vertex_attributes sprite_vertex_attributes =
+    {
+        { 0, 2, GL_FLOAT, (int32_t)offsetof(mesh_vertex::sprite, position) },
+        { 1, 2, GL_FLOAT, (int32_t)offsetof(mesh_vertex::sprite, uv) }
+    };
+
+    SpriteGeometry sprite_geometry;
+
+    sprite_geometry.begin(4, 2);
+    sprite_geometry.add_vertex({{sprite_half_w, sprite_half_h }, {0.8f, 0.85f } });
+    sprite_geometry.add_vertex({{sprite_half_w, -sprite_half_h }, {0.8f, 0.35f } });
+    sprite_geometry.add_vertex({{-sprite_half_w, -sprite_half_h }, {0.23f, 0.35f } });
+    sprite_geometry.add_vertex({{-sprite_half_w, sprite_half_h }, {0.23f, 0.85f } });
+
+    sprite_geometry.add_face({0, 1, 3 });
+    sprite_geometry.add_face({1, 2, 3 });
+    sprite_geometry.end();
+
+    auto sprite_submesh = sprite_geometry.get_submesh();
+
+    VertexArray sprite_vao;
+    sprite_vao.create();
+    sprite_vao.bind();
+
+    Buffer sprite_vbo {GL_ARRAY_BUFFER, GL_STATIC_DRAW };
+    sprite_vbo.create();
+    sprite_vbo.bind();
+    sprite_vbo.data(BufferData::make_data(sprite_geometry.vertices()));
+
+    Buffer sprite_ibo {GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW };
+    sprite_ibo.create();
+    sprite_ibo.bind();
+    sprite_ibo.data(BufferData::make_data(sprite_geometry.faces()));
+
+    sprite_vao.init_attributes_of_type<mesh_vertex::sprite>(sprite_vertex_attributes);
+
+    // ==================================================================================
+
     RenderPass render_pass { GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT };
 
     render_pass.enable(GL_DEPTH_TEST);
     render_pass.enable(GL_MULTISAMPLE);
+
+    render_pass.enable(GL_BLEND);
+
+    #ifdef USE_BLEND
+    render_pass.blend();
+    #endif
 
     rgb clear_color { 0.062, 0.403, 0.436 };
     render_pass.clear_color(clear_color);
@@ -176,18 +251,25 @@ int main()
 
     // ==================================================================================
 
-    Camera perspective_camera { 60.0f };
+    Camera ortho_camera;
+    Camera scene_camera {60.0f };
     vec3   camera_position { 0.0f, 0.0f, -12.0f };
 
-    perspective_camera.resize((float) width, (float) height);
+    scene_camera.resize((float) width, (float) height);
+    ortho_camera.resize((float)width, (float)height);
 
-    Transform camera_transform;
-    camera_transform.translate(camera_position);
+    Transform scene_camera_transform;
+
+    scene_camera_transform.translate(camera_position);
 
     // ==================================================================================
 
     Transform item_transform;
     Transform frame_transform;
+    Transform sprite_transform;
+
+    sprite_transform.translate({ (float)width / 2.0f, (float)height / 2.0f })
+                    .scale({ 0.8f, 0.8f, 0.8f });
 
     // ==================================================================================
 
@@ -254,6 +336,8 @@ int main()
     bool x_turn  = true;
     bool is_over = false;
 
+    bool show_logo = true;
+
     while (!window->closed())
     {
         #ifdef USE_EDITOR
@@ -274,7 +358,11 @@ int main()
             width  = new_width;
             height = new_height;
 
-            perspective_camera.resize((float) width, (float) height);
+            scene_camera.resize((float) width, (float) height);
+            ortho_camera.resize((float)width, (float)height);
+
+            sprite_transform.translate({ (float)width / 2.0f, (float)height / 2.0f })
+                    .scale({ 0.8f, 0.8f, 0.8f });
         }
 
         // ==================================================================================
@@ -283,7 +371,7 @@ int main()
         {
             vec2 mouse_position = input->mouse_position(window.get());
 
-            auto ray = perspective_camera.screen_to_world(camera_transform.matrix(), mouse_position);
+            auto ray = scene_camera.screen_to_world(scene_camera_transform.matrix(), mouse_position);
             auto hit = physics.cast(ray, 50.0f);
 
             if (hit.hasHit())
@@ -307,8 +395,9 @@ int main()
 
         if (input->key_pressed(window.get(), input::Key::Space))
         {
-            x_turn  = true;
-            is_over = false;
+            x_turn    = true;
+            is_over   = false;
+            show_logo = false;
 
             board.reset();
         }
@@ -334,60 +423,80 @@ int main()
 
         // ==================================================================================
 
-        matrices[0] = glm::mat4 { 1.0f };
-        matrices[1] = camera_transform.matrix();
-        matrices[2] = perspective_camera.projection();
-
-        matrices_buffer.data(BufferData::make_data(matrices));
-        material_buffer.data(BufferData::make_data(&frame_material));
-        light_buffer.data(BufferData::make_data(&directional_light));
-
-        // ==================================================================================
-
-        diffuse_instance_program.bind();
-
-        material_buffer.sub_data(BufferData::make_data(&frame_material));
-
-        scene_vao.bind();
-        glDrawElementsInstanced(GL_TRIANGLES, cover_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(cover_mesh_part.index), 9);
-
-        diffuse_program.bind();
-
-        for (int32_t row = 0; row < board.rows(); row++)
+        if (!show_logo)
         {
-            for (int32_t column = 0; column < board.columns(); column++)
-            {
-                const auto& item = board.item_at(row, column);
+            matrices[0] = glm::mat4{1.0f};
+            matrices[1] = scene_camera_transform.matrix();
+            matrices[2] = scene_camera.projection();
 
-                item_transform.translate(item.position)
-                               .scale({ 0.5f, 0.5f, 0.5f });
+            matrices_ubo.data(BufferData::make_data(matrices));
+            material_buffer.data(BufferData::make_data(&frame_material));
+            light_buffer.data(BufferData::make_data(&directional_light));
 
-                matrices_buffer.sub_data(BufferData::make_data(&item_transform.matrix()));
+            // ==================================================================================
 
-                if (item.type == Item::Type::X)
-                {
-                    material_buffer.sub_data(BufferData::make_data(&x_material));
-                    glDrawElements(GL_TRIANGLES, x_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(x_mesh_part.index));
-                }
-                else if (item.type == Item::Type::O)
-                {
-                    material_buffer.sub_data(BufferData::make_data(&o_material));
-                    glDrawElements(GL_TRIANGLES, o_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(o_mesh_part.index));
+            diffuse_instance_program.bind();
+
+            material_buffer.sub_data(BufferData::make_data(&frame_material));
+
+            scene_vao.bind();
+            glDrawElementsInstanced(GL_TRIANGLES, cover_mesh_part.count, GL_UNSIGNED_INT,
+                                    reinterpret_cast<std::byte *>(cover_mesh_part.index), 9);
+
+            diffuse_program.bind();
+
+            for (int32_t row = 0; row < board.rows(); row++) {
+                for (int32_t column = 0; column < board.columns(); column++) {
+                    const auto &item = board.item_at(row, column);
+
+                    item_transform.translate(item.position)
+                            .scale({0.5f, 0.5f, 0.5f});
+
+                    matrices_ubo.sub_data(BufferData::make_data(&item_transform.matrix()));
+
+                    if (item.type == Item::Type::X) {
+                        material_buffer.sub_data(BufferData::make_data(&x_material));
+                        glDrawElements(GL_TRIANGLES, x_mesh_part.count, GL_UNSIGNED_INT,
+                                       reinterpret_cast<std::byte *>(x_mesh_part.index));
+                    } else if (item.type == Item::Type::O) {
+                        material_buffer.sub_data(BufferData::make_data(&o_material));
+                        glDrawElements(GL_TRIANGLES, o_mesh_part.count, GL_UNSIGNED_INT,
+                                       reinterpret_cast<std::byte *>(o_mesh_part.index));
+                    }
                 }
             }
+
+            // ==================================================================================
+
+            frame_transform.translate({0.0f, 0.0f, 0.0f})
+                            //.rotate({ 0.0f, 1.0f, 0.0f }, total_time)
+                    .scale({0.5f, 0.5f, 0.5f});
+
+            matrices_ubo.sub_data(BufferData::make_data(&frame_transform.matrix()));
+            material_buffer.sub_data(BufferData::make_data(&frame_material));
+
+            glDrawElements(GL_TRIANGLES, frame_mesh_part.count, GL_UNSIGNED_INT,
+                           reinterpret_cast<std::byte *>(frame_mesh_part.index));
+
+            // ==================================================================================
         }
+        else
+        {
+            matrices[0] = sprite_transform.matrix();
+            matrices[1] = glm::mat4{1.0f};
+            matrices[2] = ortho_camera.projection();
 
-        // ==================================================================================
+            matrices_ubo.data(BufferData::make_data(matrices));
 
-        frame_transform.translate({ 0.0f, 0.0f, 0.0f })
-                       .scale({ 0.5f, 0.5f, 0.5f });
+            sprite_shader->bind();
+            tic_tac_toe_texture.bind();
 
-        matrices_buffer.sub_data(BufferData::make_data(&frame_transform.matrix()));
-        material_buffer.sub_data(BufferData::make_data(&frame_material));
+            sprite_vao.bind();
+            glDrawElements(GL_TRIANGLES, sprite_submesh.count, GL_UNSIGNED_INT,
+                           reinterpret_cast<std::byte *>(sprite_submesh.index));
 
-        glDrawElements(GL_TRIANGLES, frame_mesh_part.count, GL_UNSIGNED_INT, reinterpret_cast<std::byte*>(frame_mesh_part.index));
-
-        // ==================================================================================
+            // ==================================================================================
+        }
 
         #ifdef USE_EDITOR
 

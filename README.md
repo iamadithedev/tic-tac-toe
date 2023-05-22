@@ -1,3 +1,5 @@
 # Tic Tac Toe Game 
 
-![TicTacToe](Capture.PNG)
+![Logo](Logo.PNG)
+
+![TicTacToe](Game.PNG)
