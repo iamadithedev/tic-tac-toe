@@ -184,7 +184,7 @@ int main()
         { 1, 2, GL_FLOAT, (int32_t)offsetof(mesh_vertex::sprite, uv) }
     };
 
-    SpriteGeometry sprite_geometry;
+    geometry::sprite sprite_geometry; // TODO here we should have half width/height and x min/max y min/max
 
     sprite_geometry.begin(4, 2);
     sprite_geometry.add_vertex({{sprite_half_w, sprite_half_h }, {0.8f, 0.85f } });
