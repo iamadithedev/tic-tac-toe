@@ -65,43 +65,29 @@ int main()
     ResourceManager resources;
     resources.init("../Assets/");
 
-    auto sprite_shader = resources.load<Shader>("sprite_shader.asset");
+    auto diffuse_shader = resources.load<Shader>("diffuse_shader.asset");
+    auto sprite_shader  = resources.load<Shader>("sprite_shader.asset");
 
     // ==================================================================================
 
-    auto diffuse_vertex_source = File::read<char>("../Assets/glsl/diffuse.vert.glsl");
-    auto diffuse_vertex_instance_source = File::read<char>("../Assets/glsl/diffuse_instance.vert.glsl");
-
+    auto diffuse_vertex_source = File::read<char>("../Assets/glsl/diffuse_instance.vert.glsl");
     auto diffuse_fragment_source = File::read<char>("../Assets/glsl/diffuse.frag.glsl");
 
     ShaderStage diffuse_vertex_shader { "diffuse_vert.glsl", GL_VERTEX_SHADER };
     diffuse_vertex_shader.create();
     diffuse_vertex_shader.source(diffuse_vertex_source);
 
-    ShaderStage diffuse_vertex_instance_shader { "diffuse_vert_instance.glsl", GL_VERTEX_SHADER };
-    diffuse_vertex_instance_shader.create();
-    diffuse_vertex_instance_shader.source(diffuse_vertex_instance_source);
-
     ShaderStage diffuse_fragment_shader {"diffuse_frag.glsl", GL_FRAGMENT_SHADER };
     diffuse_fragment_shader.create();
     diffuse_fragment_shader.source(diffuse_fragment_source);
 
-    Shader diffuse_program;
-    diffuse_program.create();
-    diffuse_program.attach(&diffuse_vertex_shader);
-    diffuse_program.attach(&diffuse_fragment_shader);
-    diffuse_program.link();
-
     Shader diffuse_instance_program;
     diffuse_instance_program.create();
-    diffuse_instance_program.attach(&diffuse_vertex_instance_shader);
+    diffuse_instance_program.attach(&diffuse_vertex_shader);
     diffuse_instance_program.attach(&diffuse_fragment_shader);
     diffuse_instance_program.link();
 
-    diffuse_program.detach(&diffuse_vertex_shader);
-    diffuse_program.detach(&diffuse_fragment_shader);
-
-    diffuse_instance_program.detach(&diffuse_vertex_instance_shader);
+    diffuse_instance_program.detach(&diffuse_vertex_shader);
     diffuse_instance_program.detach(&diffuse_fragment_shader);
 
     // ==================================================================================
@@ -442,8 +428,7 @@ int main()
             scene_vao.bind();
             glDrawElementsInstanced(GL_TRIANGLES, cover_mesh_part.count, GL_UNSIGNED_INT,
                                     reinterpret_cast<std::byte *>(cover_mesh_part.index), 9);
-
-            diffuse_program.bind();
+            diffuse_shader->bind();
 
             for (int32_t row = 0; row < board.rows(); row++) {
                 for (int32_t column = 0; column < board.columns(); column++) {
