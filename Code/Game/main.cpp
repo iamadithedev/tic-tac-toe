@@ -371,12 +371,12 @@ int main()
         {
             vec2 mouse_position = input->mouse_position(window.get());
 
-            auto ray = scene_camera.screen_to_world(scene_camera_transform.matrix(), mouse_position);
-            auto hit = physics.cast(ray, 50.0f);
+            auto ray    = scene_camera.screen_to_world(scene_camera_transform.matrix(), mouse_position);
+            auto result = physics.cast(ray, 50.0f);
 
-            if (hit.hasHit())
+            if (result.hit())
             {
-                const int32_t hit_index = hit.m_collisionObject->getUserIndex();
+                const int32_t hit_index = result.index();
 
                 const int32_t row    = hit_index / board.columns();
                 const int32_t column = hit_index % board.columns();
