@@ -1,0 +1,14 @@
+{
+  "type": 11137319767511615510,
+  "binary": false,
+  "stages": [
+    {
+      "file": "glsl/debug.vert.glsl",
+      "type": 0
+    },
+    {
+      "file": "glsl/debug.frag.glsl",
+      "type": 1
+    }
+  ]
+}

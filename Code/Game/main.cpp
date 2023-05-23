@@ -1,7 +1,6 @@
 #include "glfw/platform_factory.hpp"
 #include "glfw/platform.hpp"
 
-#include "file.hpp"
 #include "shader.hpp"
 #include "vertex_array.hpp"
 #include "buffer.hpp"
@@ -19,7 +18,7 @@
 #include "resource_manager.hpp"
 #include "sampler.hpp"
 
-//#define USE_EDITOR
+#define USE_EDITOR
 #define USE_BLEND
 
 #ifdef USE_EDITOR
@@ -65,30 +64,9 @@ int main()
     ResourceManager resources;
     resources.init("../Assets/");
 
-    auto diffuse_shader = resources.load<Shader>("diffuse_shader.asset");
-    auto sprite_shader  = resources.load<Shader>("sprite_shader.asset");
-
-    // ==================================================================================
-
-    auto diffuse_vertex_source = File::read<char>("../Assets/glsl/diffuse_instance.vert.glsl");
-    auto diffuse_fragment_source = File::read<char>("../Assets/glsl/diffuse.frag.glsl");
-
-    ShaderStage diffuse_vertex_shader { "diffuse_vert.glsl", GL_VERTEX_SHADER };
-    diffuse_vertex_shader.create();
-    diffuse_vertex_shader.source(diffuse_vertex_source);
-
-    ShaderStage diffuse_fragment_shader {"diffuse_frag.glsl", GL_FRAGMENT_SHADER };
-    diffuse_fragment_shader.create();
-    diffuse_fragment_shader.source(diffuse_fragment_source);
-
-    Shader diffuse_instance_program;
-    diffuse_instance_program.create();
-    diffuse_instance_program.attach(&diffuse_vertex_shader);
-    diffuse_instance_program.attach(&diffuse_fragment_shader);
-    diffuse_instance_program.link();
-
-    diffuse_instance_program.detach(&diffuse_vertex_shader);
-    diffuse_instance_program.detach(&diffuse_fragment_shader);
+    auto diffuse_shader          = resources.load<Shader>("diffuse_shader.asset");
+    auto diffuse_instance_shader = resources.load<Shader>("diffuse_instance_shader.asset");
+    auto sprite_shader           = resources.load<Shader>("sprite_shader.asset");
 
     // ==================================================================================
 
@@ -267,11 +245,11 @@ int main()
     #ifdef USE_EDITOR
 
     Editor editor;
-    editor.init(window.get(), &physics);
+    editor.init(window.get(), &resources, &physics);
 
     CameraWindow camera_window;
-    camera_window.set_camera(&perspective_camera);
-    camera_window.set_transform(&camera_transform, camera_position);
+    camera_window.set_camera(&scene_camera);
+    camera_window.set_transform(&scene_camera_transform, camera_position);
 
     RenderPassWindow render_pass_window;
     render_pass_window.set_render_pass(&render_pass, clear_color);
@@ -421,13 +399,13 @@ int main()
 
             // ==================================================================================
 
-            diffuse_instance_program.bind();
+            diffuse_instance_shader->bind();
 
             material_buffer.sub_data(BufferData::make_data(&frame_material));
 
             scene_vao.bind();
             glDrawElementsInstanced(GL_TRIANGLES, cover_mesh_part.count, GL_UNSIGNED_INT,
-                                    reinterpret_cast<std::byte *>(cover_mesh_part.index), 9);
+                                    reinterpret_cast<std::byte*>(cover_mesh_part.index), 9);
             diffuse_shader->bind();
 
             for (int32_t row = 0; row < board.rows(); row++) {
@@ -446,7 +424,7 @@ int main()
                     } else if (item.type == Item::Type::O) {
                         material_buffer.sub_data(BufferData::make_data(&o_material));
                         glDrawElements(GL_TRIANGLES, o_mesh_part.count, GL_UNSIGNED_INT,
-                                       reinterpret_cast<std::byte *>(o_mesh_part.index));
+                                       reinterpret_cast<std::byte*>(o_mesh_part.index));
                     }
                 }
             }
@@ -461,7 +439,7 @@ int main()
             material_buffer.sub_data(BufferData::make_data(&frame_material));
 
             glDrawElements(GL_TRIANGLES, frame_mesh_part.count, GL_UNSIGNED_INT,
-                           reinterpret_cast<std::byte *>(frame_mesh_part.index));
+                           reinterpret_cast<std::byte*>(frame_mesh_part.index));
 
             // ==================================================================================
         }
@@ -478,14 +456,14 @@ int main()
 
             sprite_vao.bind();
             glDrawElements(GL_TRIANGLES, sprite_submesh.count, GL_UNSIGNED_INT,
-                           reinterpret_cast<std::byte *>(sprite_submesh.index));
+                           reinterpret_cast<std::byte*>(sprite_submesh.index));
 
             // ==================================================================================
         }
 
         #ifdef USE_EDITOR
 
-        editor.draw(&matrices_buffer);
+        editor.draw(&matrices_ubo);
 
         #endif
 
