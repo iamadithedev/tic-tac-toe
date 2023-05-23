@@ -15,10 +15,11 @@
 #include "importers/mesh_importer.hpp"
 #include "importers/texture_importer.hpp"
 #include "geometries/combine_geometry.hpp"
+#include "geometries/sprite_geometry.hpp"
 #include "resource_manager.hpp"
 #include "sampler.hpp"
 
-#define USE_EDITOR
+//#define USE_EDITOR
 #define USE_BLEND
 
 #ifdef USE_EDITOR
@@ -153,28 +154,32 @@ int main()
 
     // ==================================================================================
 
-    float sprite_half_w = ((float)tic_tac_toe_texture_data.width()  * 0.6f)  / 2.0f;
-    float sprite_half_h = ((float)tic_tac_toe_texture_data.height() * 0.47f) / 2.0f;
+    float logo_sprite_w = (float)tic_tac_toe_texture_data.width()  * 0.57f;
+    float logo_sprite_h = (float)tic_tac_toe_texture_data.height() * 0.5f;
+
+    float x_sprite_w = (float)tic_tac_toe_texture_data.width()  * 0.25f;
+    float x_sprite_h = (float)tic_tac_toe_texture_data.height() * 0.18f;
+
+    SpriteGeometry sprite_geometry;
+
+    sprite_geometry.begin();
+    sprite_geometry.add_sprite(logo_sprite_w / 2.0f,
+                               logo_sprite_h / 2.0f, { 0.23f, 0.35f }, { 0.8f, 0.85f });
+
+    sprite_geometry.add_sprite(x_sprite_w / 2.0f,
+                               x_sprite_h / 2.0f, { 0.25f, 0.17f }, { 0.5f, 0.35f });
+    sprite_geometry.end();
+
+    auto logo_sprite_submesh = sprite_geometry[0];
+    auto x_sprite_submesh    = sprite_geometry[1];
+
+    // ==================================================================================
 
     vertex_attributes sprite_vertex_attributes =
     {
         { 0, 2, GL_FLOAT, (int32_t)offsetof(mesh_vertex::sprite, position) },
         { 1, 2, GL_FLOAT, (int32_t)offsetof(mesh_vertex::sprite, uv) }
     };
-
-    geometry::sprite sprite_geometry; // TODO here we should have half width/height and x min/max y min/max
-
-    sprite_geometry.begin(4, 2);
-    sprite_geometry.add_vertex({{sprite_half_w, sprite_half_h }, {0.8f, 0.85f } });
-    sprite_geometry.add_vertex({{sprite_half_w, -sprite_half_h }, {0.8f, 0.35f } });
-    sprite_geometry.add_vertex({{-sprite_half_w, -sprite_half_h }, {0.23f, 0.35f } });
-    sprite_geometry.add_vertex({{-sprite_half_w, sprite_half_h }, {0.23f, 0.85f } });
-
-    sprite_geometry.add_face({0, 1, 3 });
-    sprite_geometry.add_face({1, 2, 3 });
-    sprite_geometry.end();
-
-    auto sprite_submesh = sprite_geometry.get_submesh();
 
     VertexArray sprite_vao;
     sprite_vao.create();
@@ -230,10 +235,15 @@ int main()
 
     Transform item_transform;
     Transform frame_transform;
-    Transform sprite_transform;
 
-    sprite_transform.translate({ (float)width / 2.0f, (float)height / 2.0f })
-                    .scale({ 0.8f, 0.8f, 0.8f });
+    Transform logo_sprite_transform;
+    Transform x_sprite_transform;
+
+    logo_sprite_transform.translate({(float)width / 2.0f, (float)height / 2.0f })
+                         .scale({ 0.8f, 0.8f, 0.8f });
+
+    x_sprite_transform.translate({ 200.0f, (float)height / 2.0f })
+                      .scale({ 0.8f, 0.8f, 0.8f });
 
     // ==================================================================================
 
@@ -325,7 +335,7 @@ int main()
             scene_camera.resize((float) width, (float) height);
             ortho_camera.resize((float)width, (float)height);
 
-            sprite_transform.translate({ (float)width / 2.0f, (float)height / 2.0f })
+            logo_sprite_transform.translate({(float)width / 2.0f, (float)height / 2.0f })
                     .scale({ 0.8f, 0.8f, 0.8f });
         }
 
@@ -445,8 +455,8 @@ int main()
         }
         else
         {
-            matrices[0] = sprite_transform.matrix();
-            matrices[1] = glm::mat4{1.0f};
+            matrices[0] = logo_sprite_transform.matrix();
+            matrices[1] = glm::mat4 {1.0f };
             matrices[2] = ortho_camera.projection();
 
             matrices_ubo.data(BufferData::make_data(matrices));
@@ -455,8 +465,15 @@ int main()
             tic_tac_toe_texture.bind();
 
             sprite_vao.bind();
-            glDrawElements(GL_TRIANGLES, sprite_submesh.count, GL_UNSIGNED_INT,
-                           reinterpret_cast<std::byte*>(sprite_submesh.index));
+            glDrawElements(GL_TRIANGLES, logo_sprite_submesh.count, GL_UNSIGNED_INT,
+                           reinterpret_cast<std::byte*>(logo_sprite_submesh.index));
+
+            // ==================================================================================
+
+            matrices_ubo.sub_data(BufferData::make_data(&x_sprite_transform.matrix()));
+
+            glDrawElements(GL_TRIANGLES, x_sprite_submesh.count, GL_UNSIGNED_INT,
+                           reinterpret_cast<std::byte*>(x_sprite_submesh.index));
 
             // ==================================================================================
         }
