@@ -43,7 +43,7 @@ int main()
     {
         return -1;
     }
-
+         window->fixed_size();
     if (!window->create())
     {
         platform->release();
@@ -154,24 +154,34 @@ int main()
 
     // ==================================================================================
 
-    float logo_sprite_w = (float)tic_tac_toe_texture_data.width()  * 0.57f;
-    float logo_sprite_h = (float)tic_tac_toe_texture_data.height() * 0.5f;
+    vec2 sprite_pivot { 0.5f, 0.5f };
 
-    float x_sprite_w = (float)tic_tac_toe_texture_data.width()  * 0.25f;
-    float x_sprite_h = (float)tic_tac_toe_texture_data.height() * 0.18f;
+    auto atlas_texture_width  = (float)tic_tac_toe_texture_data.width();
+    auto atlas_texture_height = (float)tic_tac_toe_texture_data.height();
+
+    float logo_sprite_wp = 0.57f;
+    float logo_sprite_hp = 0.5f;
+
+    float logo_sprite_w = atlas_texture_width  * logo_sprite_wp;
+    float logo_sprite_h = atlas_texture_height * logo_sprite_hp;
+
+    float x_sprite_w = atlas_texture_width  * 0.25f;
+    float x_sprite_h = atlas_texture_height * 0.18f;
+
+    float o_sprite_w = atlas_texture_width  * 0.25f;
+    float o_sprite_h = atlas_texture_height * 0.17f;
 
     SpriteGeometry sprite_geometry;
 
     sprite_geometry.begin();
-    sprite_geometry.add_sprite(logo_sprite_w / 2.0f,
-                               logo_sprite_h / 2.0f, { 0.23f, 0.35f }, { 0.8f, 0.85f });
-
-    sprite_geometry.add_sprite(x_sprite_w / 2.0f,
-                               x_sprite_h / 2.0f, { 0.25f, 0.17f }, { 0.5f, 0.35f });
+    sprite_geometry.add_sprite(logo_sprite_w, logo_sprite_h, sprite_pivot, { 0.23f, 0.35f }, { 0.8f, 0.85f });
+    sprite_geometry.add_sprite(x_sprite_w,x_sprite_h, sprite_pivot, { 0.25f, 0.17f }, { 0.5f, 0.35f });
+    sprite_geometry.add_sprite(o_sprite_w, o_sprite_h, sprite_pivot, { 0.54f, 0.18f }, { 0.79f, 0.35f });
     sprite_geometry.end();
 
     auto logo_sprite_submesh = sprite_geometry[0];
     auto x_sprite_submesh    = sprite_geometry[1];
+    auto o_sprite_submesh    = sprite_geometry[2];
 
     // ==================================================================================
 
@@ -238,12 +248,18 @@ int main()
 
     Transform logo_sprite_transform;
     Transform x_sprite_transform;
+    Transform o_sprite_transform;
 
     logo_sprite_transform.translate({(float)width / 2.0f, (float)height / 2.0f })
                          .scale({ 0.8f, 0.8f, 0.8f });
 
+    vec3 sprite_pieces_scale { 0.35f, 0.35f, 0.35f };
+
     x_sprite_transform.translate({ 200.0f, (float)height / 2.0f })
-                      .scale({ 0.8f, 0.8f, 0.8f });
+                      .scale({ sprite_pieces_scale });
+
+    o_sprite_transform.translate({ 800.0f, (float)height / 2.0f })
+            .scale({ sprite_pieces_scale });
 
     // ==================================================================================
 
@@ -452,6 +468,28 @@ int main()
                            reinterpret_cast<std::byte*>(frame_mesh_part.index));
 
             // ==================================================================================
+
+            matrices[0] = x_sprite_transform.matrix();
+            matrices[1] = glm::mat4 {1.0f };
+            matrices[2] = ortho_camera.projection();
+
+            matrices_ubo.sub_data(BufferData::make_data(matrices));
+
+            sprite_shader->bind();
+            tic_tac_toe_texture.bind();
+
+            sprite_vao.bind();
+            glDrawElements(GL_TRIANGLES, x_sprite_submesh.count, GL_UNSIGNED_INT,
+                           reinterpret_cast<std::byte*>(x_sprite_submesh.index));
+
+            // ==================================================================================
+
+            matrices_ubo.sub_data(BufferData::make_data(&o_sprite_transform.matrix()));
+
+            glDrawElements(GL_TRIANGLES, o_sprite_submesh.count, GL_UNSIGNED_INT,
+                           reinterpret_cast<std::byte*>(o_sprite_submesh.index));
+
+            // ==================================================================================
         }
         else
         {
@@ -467,13 +505,6 @@ int main()
             sprite_vao.bind();
             glDrawElements(GL_TRIANGLES, logo_sprite_submesh.count, GL_UNSIGNED_INT,
                            reinterpret_cast<std::byte*>(logo_sprite_submesh.index));
-
-            // ==================================================================================
-
-            matrices_ubo.sub_data(BufferData::make_data(&x_sprite_transform.matrix()));
-
-            glDrawElements(GL_TRIANGLES, x_sprite_submesh.count, GL_UNSIGNED_INT,
-                           reinterpret_cast<std::byte*>(x_sprite_submesh.index));
 
             // ==================================================================================
         }
